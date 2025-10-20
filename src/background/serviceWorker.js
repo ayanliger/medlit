@@ -1,8 +1,4 @@
-const CONTEXT_MENUS = {
-  methodology: "medlit_context_methodology",
-  simplify: "medlit_context_simplify",
-  translate: "medlit_context_translate"
-};
+import { CONTEXT_MENUS, MESSAGE_TYPES, MESSAGE_SOURCE, ERROR_MESSAGES } from "../shared/constants.js";
 
 chrome.runtime.onInstalled.addListener(async () => {
   await setupContextMenus();
@@ -38,7 +34,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   chrome.runtime.sendMessage({
     ...message,
     sourceTabId: tab.id,
-    source: "medlit-service-worker"
+    source: MESSAGE_SOURCE.SERVICE_WORKER
   });
   chrome.tabs.sendMessage(tab.id, message, () => {
     chrome.runtime.lastError; // Suppress if no listener in tab
@@ -50,12 +46,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
-  if (message?.source === "medlit-service-worker") {
+  if (message?.source === MESSAGE_SOURCE.SERVICE_WORKER) {
     return;
   }
 
   switch (message.type) {
-    case "medlit:request-document": {
+    case MESSAGE_TYPES.REQUEST_DOCUMENT: {
       handleDocumentRequest()
         .then((documentSnapshot) => sendResponse({ ok: true, document: documentSnapshot }))
         .catch((error) => {
@@ -64,7 +60,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       return true;
     }
-    case "medlit:request-last-selection": {
+    case MESSAGE_TYPES.REQUEST_LAST_SELECTION: {
       handleLastSelectionRequest()
         .then((selection) => sendResponse({ ok: true, selection }))
         .catch((error) => {
@@ -81,26 +77,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleDocumentRequest() {
   const tab = await getActiveTab();
   if (!tab?.id) {
-    throw new Error("No active tab available");
+    throw new Error(ERROR_MESSAGES.NO_ACTIVE_TAB);
   }
 
   try {
-    return await chrome.tabs.sendMessage(tab.id, { type: "medlit:get-document-contents" });
+    return await chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.GET_DOCUMENT_CONTENTS });
   } catch (error) {
-    throw new Error("Unable to access page content. Make sure MedLit is allowed on this site.");
+    throw new Error(ERROR_MESSAGES.UNABLE_TO_ACCESS_CONTENT);
   }
 }
 
 async function handleLastSelectionRequest() {
   const tab = await getActiveTab();
   if (!tab?.id) {
-    throw new Error("No active tab available");
+    throw new Error(ERROR_MESSAGES.NO_ACTIVE_TAB);
   }
 
   try {
-    return await chrome.tabs.sendMessage(tab.id, { type: "medlit:get-last-selection" });
+    return await chrome.tabs.sendMessage(tab.id, { type: MESSAGE_TYPES.GET_LAST_SELECTION });
   } catch (error) {
-    throw new Error("Unable to read selection. Try reloading the page.");
+    throw new Error(ERROR_MESSAGES.UNABLE_TO_READ_SELECTION);
   }
 }
 
@@ -141,17 +137,17 @@ function buildContextMenuMessage(info) {
   switch (info.menuItemId) {
     case CONTEXT_MENUS.methodology:
       return {
-        type: "medlit:context-methodology",
+        type: MESSAGE_TYPES.CONTEXT_METHODOLOGY,
         payload: { text: info.selectionText }
       };
     case CONTEXT_MENUS.simplify:
       return {
-        type: "medlit:context-simplify",
+        type: MESSAGE_TYPES.CONTEXT_SIMPLIFY,
         payload: { text: info.selectionText }
       };
     case CONTEXT_MENUS.translate:
       return {
-        type: "medlit:context-translate",
+        type: MESSAGE_TYPES.CONTEXT_TRANSLATE,
         payload: { text: info.selectionText, detectedLanguage: info.selectionTextLanguage }
       };
     default:

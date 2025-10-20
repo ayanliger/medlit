@@ -1,3 +1,5 @@
+import { MESSAGE_TYPES } from "../shared/constants.js";
+
 const state = {
   lastSelection: "",
   lastSelectionTimestamp: 0
@@ -20,11 +22,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   switch (message.type) {
-    case "medlit:get-document-contents": {
+    case MESSAGE_TYPES.GET_DOCUMENT_CONTENTS: {
       sendResponse(collectDocumentSnapshot());
       break;
     }
-    case "medlit:get-last-selection": {
+    case MESSAGE_TYPES.GET_LAST_SELECTION: {
       sendResponse({
         text: state.lastSelection,
         capturedAt: state.lastSelectionTimestamp

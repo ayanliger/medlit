@@ -4,10 +4,22 @@ import {
   buildSimplificationPrompt,
   buildStructuredSummaryPrompt
 } from "./promptTemplates.js";
+import {
+  createFallbackSummary,
+  createFallbackMethodology,
+  createFallbackSimplification,
+  createFallbackTranslation,
+  createFallbackKeyPoints
+} from "./fallbacks.js";
+import { MODEL_UNAVAILABLE_MESSAGE } from "../shared/constants.js";
 
-const MODEL_UNAVAILABLE_MESSAGE =
-  "Chrome on-device AI is not available. Showing heuristic preview instead.";
-
+/**
+ * Generates a structured PICO summary of a medical research paper
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @param {Object} documentSnapshot.meta - Document metadata (title, URL, etc.)
+ * @param {Object} documentSnapshot.article - Article content
+ * @returns {Promise<Object>} Structured summary with PICO framework data
+ */
 export async function generateStructuredSummary(documentSnapshot) {
   const fallback = createFallbackSummary(documentSnapshot, MODEL_UNAVAILABLE_MESSAGE);
 
@@ -46,6 +58,13 @@ export async function generateStructuredSummary(documentSnapshot) {
   }
 }
 
+/**
+ * Evaluates the methodological quality of a research study
+ * @param {Object} params - Parameters object
+ * @param {string} params.methodsText - The methods section text
+ * @param {string} params.fullText - The full paper text for context
+ * @returns {Promise<Object>} Methodology assessment with quality scores
+ */
 export async function evaluateMethodology({ methodsText, fullText }) {
   const fallback = createFallbackMethodology(methodsText, MODEL_UNAVAILABLE_MESSAGE);
 
@@ -84,6 +103,12 @@ export async function evaluateMethodology({ methodsText, fullText }) {
   }
 }
 
+/**
+ * Simplifies complex medical text into plain English
+ * @param {string} text - The medical text to simplify
+ * @returns {Promise<Object>} Simplified text with key terms and statistics notes
+ * @throws {Error} If no text is provided
+ */
 export async function simplifyMedicalText(text) {
   const trimmed = text?.trim();
   if (!trimmed) {
@@ -151,6 +176,13 @@ export async function simplifyMedicalText(text) {
   }
 }
 
+/**
+ * Translates medical text to English
+ * @param {string} text - The text to translate
+ * @param {string} [detectedLanguage] - Optional detected source language code
+ * @returns {Promise<Object>} Translated text with source language information
+ * @throws {Error} If no text is provided
+ */
 export async function translateToEnglish(text, detectedLanguage) {
   const trimmed = text?.trim();
   if (!trimmed) {
@@ -232,6 +264,12 @@ ${trimmed}
   }
 }
 
+/**
+ * Builds key points from a summary for export purposes
+ * @param {string} summaryMarkdown - The summary in Markdown format
+ * @param {string} fullText - The full paper text
+ * @returns {Promise<Object>} Key points structured for export
+ */
 export async function buildKeyPointsExport(summaryMarkdown, fullText) {
   const session = await createLanguageModelSession({
     systemPrompt: "You structure medical study highlights for export. Output valid JSON.",
@@ -314,153 +352,3 @@ function safeJsonParse(payload) {
   }
 }
 
-function createFallbackSummary(documentSnapshot, message) {
-  const text = (documentSnapshot?.article?.textContent ?? "").replace(/\s+/g, " ").trim();
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const sampleSentences = sentences.slice(0, 3);
-
-  return {
-    source: "fallback",
-    generatedAt: new Date().toISOString(),
-    message,
-    data: {
-      studyDesign: {
-        type: "Unknown",
-        setting: "Not detected",
-        studyPeriod: "Not detected",
-        registrationID: null
-      },
-      population: {
-        sampleSize: { intervention: null, control: null, total: null },
-        demographics: { age: "Not detected", gender: "Not detected", ethnicity: "Not detected" },
-        inclusionCriteria: [],
-        exclusionCriteria: []
-      },
-      intervention: {
-        description: "Pending analysis",
-        dosage: "Pending analysis",
-        duration: "Pending analysis"
-      },
-      comparison: {
-        controlType: "Not detected",
-        description: "Pending analysis"
-      },
-      outcomes: {
-        primary: {
-          measure: "Pending analysis",
-          interventionResult: "Pending analysis",
-          controlResult: "Pending analysis",
-          pValue: null,
-          confidenceInterval: "Pending analysis",
-          effectSize: "Pending analysis"
-        },
-        secondary: []
-      },
-      interpretation: {
-        NNT: null,
-        interpretation:
-          sampleSentences.length > 0
-            ? sampleSentences.join(" ")
-            : "Review the study details once Chrome AI is available.",
-        limitations: [],
-        applicability: "Pending analysis"
-      }
-    }
-  };
-}
-
-function createFallbackMethodology(methodsText, message) {
-  const cleanText = (methodsText ?? "").replace(/\s+/g, " ").trim();
-  const excerpt = cleanText.slice(0, 360);
-
-  return {
-    source: "fallback",
-    generatedAt: new Date().toISOString(),
-    message,
-    data: {
-      researchQuestionClarity: {
-        score: 3,
-        strengths: ["AI model unavailable; review manually."],
-        concerns: []
-      },
-      sampleSizePower: {
-        score: 3,
-        calculated: null,
-        actual: null,
-        assessment: "Unable to estimate power without AI support."
-      },
-      randomization: {
-        score: 2,
-        method: "Not assessed",
-        concerns: []
-      },
-      blinding: {
-        participants: false,
-        assessors: false,
-        analysts: false,
-        concerns: ["No automated assessment available."]
-      },
-      statisticalApproach: {
-        score: 3,
-        methods: [],
-        strengths: [],
-        concerns: ["Pending AI-driven review."]
-      },
-      overallQualityScore: 50,
-      keyLimitations: [
-        "MedLit could not evaluate the methodology automatically. Review methods manually."
-      ],
-      recommendation: excerpt
-        ? `Review methods manually. Excerpt: ${excerpt}${cleanText.length > 360 ? "…" : ""}`
-        : "Review methods manually once AI is available."
-    }
-  };
-}
-
-function createFallbackSimplification(text, message) {
-  return {
-    source: "fallback",
-    generatedAt: new Date().toISOString(),
-    message,
-    data: {
-      plainEnglish: text,
-      keyTerms: [],
-      statisticsNotes: []
-    }
-  };
-}
-
-function createFallbackTranslation(text, detectedLanguage, message) {
-  return {
-    source: "fallback",
-    generatedAt: new Date().toISOString(),
-    message,
-    data: {
-      translatedText: text,
-      detectedLanguage: detectedLanguage || "unknown",
-      notes: ["Translation preview only. Chrome AI translator unavailable."]
-    }
-  };
-}
-
-function createFallbackKeyPoints(fullText) {
-  const sentences = (fullText ?? "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(/(?<=[.!?])\s+/)
-    .filter(Boolean)
-    .slice(0, 5);
-
-  return {
-    source: "fallback",
-    generatedAt: new Date().toISOString(),
-    message: MODEL_UNAVAILABLE_MESSAGE,
-    data: {
-      keyHypothesis: sentences.slice(0, 1),
-      criticalFindings: sentences.slice(1, 3),
-      studyLimitations: ["Manual review required."],
-      implications: ["Await AI analysis for actionable points."],
-      futureResearch: ["Identify future directions once AI summary is ready."]
-    }
-  };
-}
