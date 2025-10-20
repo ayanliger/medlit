@@ -1,9 +1,5 @@
 // Content scripts cannot use ES6 imports in Chrome extensions
 // Constants are inlined here for compatibility
-
-// Verify script loads
-console.log("MedLit content script loaded", window.location.href);
-
 const MESSAGE_TYPES = {
   GET_DOCUMENT_CONTENTS: "medlit:get-document-contents",
   GET_LAST_SELECTION: "medlit:get-last-selection"
@@ -26,8 +22,6 @@ document.addEventListener("selectionchange", () => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log("MedLit: Received message", message?.type);
-  
   if (!message?.type?.startsWith("medlit:")) {
     return;
   }
@@ -35,14 +29,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   try {
     switch (message.type) {
       case MESSAGE_TYPES.GET_DOCUMENT_CONTENTS: {
-        console.log("MedLit: Collecting document snapshot");
-        const snapshot = collectDocumentSnapshot();
-        console.log("MedLit: Sending snapshot", snapshot.meta.title);
-        sendResponse(snapshot);
+        sendResponse(collectDocumentSnapshot());
         break;
       }
       case MESSAGE_TYPES.GET_LAST_SELECTION: {
-        console.log("MedLit: Sending last selection");
         sendResponse({
           text: state.lastSelection,
           capturedAt: state.lastSelectionTimestamp
@@ -50,7 +40,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         break;
       }
       default:
-        console.log("MedLit: Unknown message type", message.type);
         break;
     }
   } catch (error) {

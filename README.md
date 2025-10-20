@@ -1,8 +1,8 @@
 # MedLit
 
-> **⚠️ EARLY DEVELOPMENT** - This project is in the initial implementation phase. Chrome built-in AI API integration has been corrected but the extension functionality has not been tested yet.
+> **✅ FUNCTIONAL ALPHA** - Core features tested and working. The extension has undergone significant refactoring for production use.
 
-MedLit is a Chrome extension that will accelerate medical literature review with Chrome's on-device AI (Gemini Nano). It is aimed at clinicians, trainees, and researchers who need structured study summaries, methodology vetting, jargon simplification, and rapid translation without sending sensitive papers to external servers.
+MedLit is a Chrome extension that accelerates medical literature review with Chrome's on-device AI (Gemini Nano). It is aimed at clinicians, trainees, and researchers who need structured study summaries, methodology vetting, jargon simplification, and rapid translation without sending sensitive papers to external servers.
 
 ## Planned Features
 
@@ -14,20 +14,28 @@ MedLit is a Chrome extension that will accelerate medical literature review with
 
 ## Current Status
 
-**What's Implemented:**
-- ✅ Chrome built-in AI API integration (LanguageModel, Summarizer, Rewriter, Translator)
-- ✅ API detection and availability checking
-- ✅ Fallback strategies when APIs unavailable
-- ✅ Basic extension structure (manifest, service worker, content script, side panel)
-- ✅ Test page to verify API access (`test-ai-api.html`)
+**Tested & Working:**
+- ✅ Extension installation and loading
+- ✅ Chrome built-in AI API integration (LanguageModel, Rewriter, Translator)
+- ✅ **PICO-structured clinical summary generation**
+- ✅ **Methodology rigor assessment** (Cochrane Risk of Bias framework)
+- ✅ **Medical jargon simplification**
+- ✅ **Multilingual translation** (with fallback when Translator API unavailable)
+- ✅ Side panel UI and rendering
+- ✅ Context menu integration
+- ✅ Document parsing and content extraction
+- ✅ Message passing between components
+- ✅ Fallback strategies when AI unavailable
 
-**What's NOT Tested:**
-- ❌ Extension installation
-- ❌ Side panel functionality
-- ❌ Actual AI feature execution
-- ❌ Document parsing
-- ❌ UI rendering
-- ❌ Export functionality
+**Not Yet Tested:**
+- ⚠️ Export functionality (implemented but untested)
+
+**Code Quality:**
+- ✅ Modular architecture with separation of concerns
+- ✅ JSDoc documentation on core functions  
+- ✅ Centralized constants and utilities
+- ✅ Reduced main.js from 816 to 365 lines (55% reduction)
+- ✅ Comprehensive error handling
 
 ## Project Structure
 
@@ -111,12 +119,29 @@ if (AI_NAMESPACE?.languageModel?.create) { ... }
   - `chrome://flags/#summarization-api-for-gemini-nano`
 - ~2GB free storage for Gemini Nano model
 
-## Installation (Not Yet Tested)
+## Installation
+
+### Prerequisites
+
+- **Chrome 128+** (Dev, Canary, or Stable with flags enabled)
+- **~2GB free storage** for Gemini Nano model download
+
+### Enable Chrome AI Flags
+
+1. Open `chrome://flags`
+2. Search for and enable:
+   - `chrome://flags/#prompt-api-for-gemini-nano`
+   - `chrome://flags/#summarization-api-for-gemini-nano`
+3. Restart Chrome
+4. Chrome will download Gemini Nano in the background
+
+### Install Extension
 
 1. Open `chrome://extensions`
-2. Enable **Developer mode**
-3. Click **Load unpacked** → select `medlit` folder
-4. Extension should appear in toolbar
+2. Enable **Developer mode** (toggle in top-right)
+3. Click **Load unpacked**
+4. Select the `medlit` folder
+5. MedLit icon should appear in the toolbar
 
 ## Recent Fixes
 
@@ -156,23 +181,77 @@ if (AI_NAMESPACE?.languageModel?.create) { ... }
 - Reduced `main.js` from 816 to 365 lines (55% reduction)
 - Improved code organization and maintainability
 
-## Immediate Next Steps
+## Usage
 
-1. **Install and test the extension** - Load in Chrome and verify basic functionality
-2. **Test AI features** - Trigger model download and test each feature:
-   - Clinical summary generation
-   - Methodology scanner
-   - Jargon simplifier
-   - Translation
-3. **Verify UI rendering** - Check that JSON responses render correctly in side panel
-4. **Test document parsing** - Ensure content extraction works on various sites
-5. **Debug issues** - Fix any errors discovered during testing
+### Getting Started
+
+1. **Navigate to a medical research article** (PubMed, PMC, journal sites, etc.)
+2. **Click the MedLit icon** in the Chrome toolbar
+3. **Side panel opens** with the MedLit Assistant interface
+
+### Features
+
+#### 1. PICO Clinical Summary
+- Click **"Generate Clinical Summary"** button
+- Extracts: Population, Intervention, Comparison, Outcomes
+- Provides study design, demographics, results, NNT, limitations
+- Uses structured medical research framework
+
+#### 2. Methodology Rigor Assessment
+- **Option A:** Highlight methods section → Right-click → "MedLit: Scan Methodology"
+- **Option B:** Click "Scan Methods" button in side panel
+- Evaluates using Cochrane Risk of Bias framework
+- Provides quality scores (1-5) for each dimension
+- Shows overall quality score (0-100) and recommendations
+
+#### 3. Jargon Simplifier
+- Highlight complex medical text on the page
+- Right-click → "MedLit: Simplify Medical Jargon"
+- Returns plain English explanation with key term definitions
+
+#### 4. Translation
+- Highlight non-English text (abstracts, sections)
+- Right-click → "MedLit: Translate Abstract"
+- Translates to English while preserving medical terminology
+
+#### 5. Export Key Points (Not Yet Tested)
+- After generating a summary, click "Export Key Points"
+- Should download JSON file with structured study data
+
+## Troubleshooting
+
+### Extension Not Loading
+- Ensure Chrome version is 128+
+- Check that Developer mode is enabled in `chrome://extensions`
+- Try removing and re-adding the extension
+- Check browser console for errors (F12)
+
+### "Unable to Access Page Content" Error
+- Reload the webpage (F5)
+- Make sure the page has finished loading
+- Try closing and reopening the side panel
+- Check that content script loaded: Open page console (F12) and look for script errors
+
+### AI Features Not Working (Fallback Mode)
+- Check Chrome flags are enabled: `chrome://flags`
+- Verify Gemini Nano download: Go to `chrome://components` and look for "Optimization Guide On Device Model"
+- Wait for model download to complete (~2GB, may take time)
+- Restart Chrome after enabling flags
+- Some features may show "Heuristic Preview" until model is ready
+
+### Formatting Issues
+- AI responses may occasionally return malformed JSON
+- Extension will fall back to heuristic previews automatically
+- Retry the operation if results look incomplete
 
 ## Future Enhancements
 
-- Prompt tuning for medical accuracy
-- Persistent user settings
-- Additional export formats (BibTeX, CSV)
-- Enhanced PDF support
-- Batch processing
-- Result caching
+- Test and refine export functionality
+- Improve prompt engineering for better medical accuracy
+- Add persistent user settings and preferences
+- Additional export formats (BibTeX, CSV, RIS)
+- Enhanced PDF support (via chrome.pdfViewer API)
+- Batch processing for multiple papers
+- Result caching for faster re-analysis
+- Customizable PICO templates
+- Statistics visualization for outcomes data
