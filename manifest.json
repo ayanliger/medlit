@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "MedLit",
+  "short_name": "MedLit",
+  "version": "0.1.0",
+  "version_name": "0.1.0 Draft",
+  "description": "MedLit accelerates medical literature review with on-device Chrome AI for structured summaries, methodology checks, and jargon simplification.",
+  "minimum_chrome_version": "122",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "storage",
+    "contextMenus",
+    "sidePanel",
+    "aiLanguageModel"
+  ],
+  "optional_permissions": [
+    "aiSummarizer",
+    "aiWriter",
+    "aiTranslation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/serviceWorker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open MedLit Assistant"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/contentScript.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

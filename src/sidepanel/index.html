@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MedLit Assistant</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <h1 class="title">MedLit Assistant</h1>
+        <p class="subtitle">On-device AI support for medical literature review</p>
+      </div>
+      <button class="primary-action" id="generateSummaryBtn">Generate Clinical Summary</button>
+    </header>
+
+    <main class="main">
+      <section class="panel-section">
+        <header class="section-header">
+          <h2>PICO Summary</h2>
+          <div class="section-actions">
+            <button class="ghost" id="refreshSummaryBtn" title="Re-run analysis">
+              Refresh
+            </button>
+          </div>
+        </header>
+        <div id="picoOutput" class="section-body empty-state">
+          <p>No summary yet. Select text or press the button to analyze the current paper.</p>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <header class="section-header">
+          <h2>Methodology Rigor</h2>
+          <div class="section-actions">
+            <button class="ghost" id="methodologyBtn" title="Run methodology scanner">
+              Scan Methods
+            </button>
+          </div>
+        </header>
+        <div id="methodologyOutput" class="section-body empty-state">
+          <p>Choose a methods section and trigger "Scan Methodology" from the context menu.</p>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <header class="section-header">
+          <h2>Jargon Simplifier</h2>
+        </header>
+        <div id="simplifierOutput" class="section-body empty-state">
+          <p>Highlight text in the paper and pick "MedLit: Simplify Medical Jargon" to see results here.</p>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <header class="section-header">
+          <h2>Translation</h2>
+        </header>
+        <div id="translationOutput" class="section-body empty-state">
+          <p>Translate abstracts and sections from other languages with the context menu option.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="status" id="statusMessage">Ready</div>
+      <div class="controls">
+        <button class="ghost" id="exportBtn" disabled>Export Key Points</button>
+        <button class="ghost" id="settingsBtn">Settings</button>
+      </div>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
