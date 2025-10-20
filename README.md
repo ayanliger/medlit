@@ -38,12 +38,17 @@ medlit/
 └─ src/
    ├─ background/serviceWorker.js  # Context menus, side panel, messaging
    ├─ content/contentScript.js     # Document metadata capture
+   ├─ shared/                      # Shared utilities (NEW)
+   │  ├─ constants.js              # Centralized constants (message types, errors)
+   │  └─ messaging.js              # Chrome runtime messaging utilities
    ├─ sidepanel/
    │  ├─ index.html                # Side panel UI
    │  ├─ styles.css                # Panel styling  
-   │  └─ main.js                   # UI logic and AI orchestration
+   │  ├─ main.js                   # UI logic and AI orchestration (refactored)
+   │  └─ render.js                 # Rendering utilities (NEW)
    └─ ai/
-      ├─ aiClient.js               # API integration (recently fixed)
+      ├─ aiClient.js               # API integration (refactored with JSDoc)
+      ├─ fallbacks.js              # Fallback responses when AI unavailable (NEW)
       └─ promptTemplates.js        # Medical-domain prompts
 ```
 
@@ -131,11 +136,25 @@ if (AI_NAMESPACE?.languageModel?.create) { ... }
 
 ## Architecture Notes
 
+### Core Modules
 - **Service Worker:** Context menu management, side panel coordination
 - **Content Script:** Page content extraction and user selection tracking  
 - **Side Panel:** Main UI (not yet tested)
+  - `main.js`: Business logic, state management, event handling
+  - `render.js`: UI rendering functions, HTML generation
 - **AI Client:** API integration with fallback strategies
+  - `aiClient.js`: Chrome AI API calls, session management
+  - `fallbacks.js`: Heuristic responses when AI unavailable
 - **Prompt Templates:** Medical-domain prompt builders (PICO framework)
+- **Shared Utilities:** Centralized constants and messaging helpers
+
+### Recent Refactoring (2025-01-20)
+- Extracted rendering logic into separate module (~500 lines)
+- Created shared constants for message types and errors
+- Isolated fallback creation functions
+- Added JSDoc documentation to main functions
+- Reduced `main.js` from 816 to 365 lines (55% reduction)
+- Improved code organization and maintainability
 
 ## Immediate Next Steps
 

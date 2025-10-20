@@ -26,7 +26,8 @@ export async function generateStructuredSummary(documentSnapshot) {
   const session = await createLanguageModelSession({
     systemPrompt: "You are a medical research analyst. Output strictly valid JSON.",
     temperature: 0.3,
-    topK: 10
+    topK: 10,
+    language: "en"
   });
 
   if (!session) {
@@ -71,7 +72,8 @@ export async function evaluateMethodology({ methodsText, fullText }) {
   const session = await createLanguageModelSession({
     systemPrompt: "You are a clinical trial methodologist. Output valid JSON.",
     temperature: 0.4,
-    topK: 12
+    topK: 12,
+    language: "en"
   });
 
   if (!session) {
@@ -122,7 +124,8 @@ export async function simplifyMedicalText(text) {
         const rewriter = await Rewriter.create({
           tone: "more-casual",
           length: "as-is",
-          sharedContext: "Explain advanced medical research concepts to trainees"
+          sharedContext: "Explain advanced medical research concepts to trainees",
+          language: "en"
         });
         const rewritten = await rewriter.rewrite(trimmed);
         destroySession(rewriter);
@@ -145,7 +148,8 @@ export async function simplifyMedicalText(text) {
     systemPrompt:
       "You are a medical educator simplifying complex research passages. Output valid JSON matching the provided schema.",
     temperature: 0.35,
-    topK: 12
+    topK: 12,
+    language: "en"
   });
 
   if (!session) {
@@ -223,7 +227,8 @@ export async function translateToEnglish(text, detectedLanguage) {
     systemPrompt:
       "You are a medical translator. Translate input text to English while preserving clinical terminology. Respond in valid JSON.",
     temperature: 0.2,
-    topK: 10
+    topK: 10,
+    language: "en"
   });
 
   if (!session) {
@@ -274,7 +279,8 @@ export async function buildKeyPointsExport(summaryMarkdown, fullText) {
   const session = await createLanguageModelSession({
     systemPrompt: "You structure medical study highlights for export. Output valid JSON.",
     temperature: 0.35,
-    topK: 12
+    topK: 12,
+    language: "en"
   });
 
   if (!session) {
@@ -344,8 +350,17 @@ function safeJsonParse(payload) {
   }
 
   try {
-    const trimmed = typeof payload === "string" ? payload.trim() : payload;
-    return typeof trimmed === "string" ? JSON.parse(trimmed) : trimmed;
+    let text = typeof payload === "string" ? payload.trim() : payload;
+    
+    // If it's already an object, return it
+    if (typeof text !== "string") {
+      return text;
+    }
+    
+    // Strip markdown code blocks (```json ... ``` or ``` ... ```)
+    text = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+    
+    return JSON.parse(text);
   } catch (error) {
     console.warn("MedLit: JSON parse error", error);
     return null;
