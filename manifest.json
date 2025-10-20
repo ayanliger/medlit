@@ -12,13 +12,7 @@
     "scripting",
     "storage",
     "contextMenus",
-    "sidePanel",
-    "aiLanguageModel"
-  ],
-  "optional_permissions": [
-    "aiSummarizer",
-    "aiWriter",
-    "aiTranslation"
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"

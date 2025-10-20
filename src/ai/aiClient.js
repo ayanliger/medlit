@@ -5,7 +5,6 @@ import {
   buildStructuredSummaryPrompt
 } from "./promptTemplates.js";
 
-const AI_NAMESPACE = chrome?.ai ?? null;
 const MODEL_UNAVAILABLE_MESSAGE =
   "Chrome on-device AI is not available. Showing heuristic preview instead.";
 
@@ -91,24 +90,27 @@ export async function simplifyMedicalText(text) {
     throw new Error("No text provided for simplification.");
   }
 
-  if (AI_NAMESPACE?.rewriter?.create) {
+  if (typeof Rewriter !== 'undefined') {
     try {
-      const rewriter = await AI_NAMESPACE.rewriter.create({
-        tone: "more-casual",
-        length: "as-is",
-        context: "Explain advanced medical research concepts to trainees"
-      });
-      const rewritten = await rewriter.rewrite(trimmed);
-      destroySession(rewriter);
-      return {
-        source: "chrome-ai-rewriter",
-        generatedAt: new Date().toISOString(),
-        data: {
-          plainEnglish: rewritten,
-          keyTerms: [],
-          statisticsNotes: []
-        }
-      };
+      const available = await Rewriter.availability();
+      if (available !== 'unavailable') {
+        const rewriter = await Rewriter.create({
+          tone: "more-casual",
+          length: "as-is",
+          sharedContext: "Explain advanced medical research concepts to trainees"
+        });
+        const rewritten = await rewriter.rewrite(trimmed);
+        destroySession(rewriter);
+        return {
+          source: "chrome-ai-rewriter",
+          generatedAt: new Date().toISOString(),
+          data: {
+            plainEnglish: rewritten,
+            keyTerms: [],
+            statisticsNotes: []
+          }
+        };
+      }
     } catch (error) {
       console.warn("MedLit: rewriter unavailable, falling back to language model", error);
     }
@@ -155,23 +157,31 @@ export async function translateToEnglish(text, detectedLanguage) {
     throw new Error("No text provided for translation.");
   }
 
-  if (AI_NAMESPACE?.translation?.createTranslator) {
+  if (typeof Translator !== 'undefined') {
     try {
-      const translator = await AI_NAMESPACE.translation.createTranslator({
-        sourceLanguage: detectedLanguage || "auto",
+      const sourceLanguage = detectedLanguage || "en"; // Translator requires explicit source language
+      const available = await Translator.availability({
+        sourceLanguage,
         targetLanguage: "en"
       });
+      
+      if (available !== 'unavailable') {
+        const translator = await Translator.create({
+          sourceLanguage,
+          targetLanguage: "en"
+        });
 
-      const translated = await translator.translate(trimmed);
-      destroySession(translator);
-      return {
-        source: "chrome-ai-translation",
-        generatedAt: new Date().toISOString(),
-        data: {
-          translatedText: translated,
-          detectedLanguage: translator.sourceLanguage || detectedLanguage || "auto"
-        }
-      };
+        const translated = await translator.translate(trimmed);
+        destroySession(translator);
+        return {
+          source: "chrome-ai-translation",
+          generatedAt: new Date().toISOString(),
+          data: {
+            translatedText: translated,
+            detectedLanguage: sourceLanguage
+          }
+        };
+      }
     } catch (error) {
       console.warn("MedLit: translator unavailable, falling back to language model", error);
     }
@@ -258,12 +268,16 @@ export async function buildKeyPointsExport(summaryMarkdown, fullText) {
 }
 
 async function createLanguageModelSession(options) {
-  if (!AI_NAMESPACE?.languageModel?.create) {
+  if (typeof LanguageModel === 'undefined') {
     return null;
   }
 
   try {
-    return await AI_NAMESPACE.languageModel.create(options);
+    const available = await LanguageModel.availability();
+    if (available === 'unavailable') {
+      return null;
+    }
+    return await LanguageModel.create(options);
   } catch (error) {
     console.warn("MedLit: unable to create language model session", error);
     return null;

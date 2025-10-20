@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chrome AI API Test</title>
+</head>
+<body>
+  <h1>Chrome Built-in AI API Test</h1>
+  <button id="testBtn">Test API Access</button>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.getElementById('output');
+    
+    document.getElementById('testBtn').addEventListener('click', async () => {
+      output.textContent = 'Testing API access...\n\n';
+      
+      // Test 1: Check if API constructors exist
+      output.textContent += 'API Constructors:\n';
+      output.textContent += `  LanguageModel: ${typeof LanguageModel !== 'undefined'}\n`;
+      output.textContent += `  Summarizer: ${typeof Summarizer !== 'undefined'}\n`;
+      output.textContent += `  Rewriter: ${typeof Rewriter !== 'undefined'}\n`;
+      output.textContent += `  Translator: ${typeof Translator !== 'undefined'}\n\n`;
+      
+      // Test 2: Check LanguageModel availability
+      if (typeof LanguageModel !== 'undefined') {
+        try {
+          output.textContent += 'Testing LanguageModel:\n';
+          const availability = await LanguageModel.availability();
+          output.textContent += `  Availability: ${availability}\n`;
+          
+          const params = await LanguageModel.params();
+          output.textContent += `  Params:\n`;
+          output.textContent += JSON.stringify(params, null, 2) + '\n\n';
+        } catch (e) {
+          output.textContent += `  Error: ${e.message}\n\n`;
+        }
+      }
+      
+      // Test 3: Check Summarizer availability
+      if (typeof Summarizer !== 'undefined') {
+        try {
+          output.textContent += 'Testing Summarizer:\n';
+          const availability = await Summarizer.availability();
+          output.textContent += `  Availability: ${availability}\n\n`;
+        } catch (e) {
+          output.textContent += `  Error: ${e.message}\n\n`;
+        }
+      }
+      
+      // Test 4: Check Translator availability
+      if (typeof Translator !== 'undefined') {
+        try {
+          output.textContent += 'Testing Translator (en -> fr):\n';
+          const availability = await Translator.availability({
+            sourceLanguage: 'en',
+            targetLanguage: 'fr'
+          });
+          output.textContent += `  Availability: ${availability}\n\n`;
+        } catch (e) {
+          output.textContent += `  Error: ${e.message}\n\n`;
+        }
+      }
+      
+      if (typeof LanguageModel === 'undefined' && typeof Summarizer === 'undefined') {
+        output.textContent += '\n⚠️ No AI APIs available\n';
+        output.textContent += 'You may need to:\n';
+        output.textContent += '1. Use Chrome 128+ (Dev/Canary)\n';
+        output.textContent += '2. Enable chrome://flags/#prompt-api-for-gemini-nano\n';
+        output.textContent += '3. Enable chrome://flags/#summarization-api-for-gemini-nano\n';
+        output.textContent += '4. Wait for Gemini Nano model download\n';
+      }
+    });
+  </script>
+</body>
+</html>
