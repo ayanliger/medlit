@@ -10,15 +10,15 @@
     <header class="header">
       <div>
         <h1 class="title">MedLit Assistant</h1>
-        <p class="subtitle">On-device AI support for medical literature review</p>
+        <p class="subtitle">Built-in AI extension for medical literature review</p>
       </div>
-      <button class="primary-action" id="generateSummaryBtn">Generate Clinical Summary</button>
+      <button class="primary-action" id="generateSummaryBtn">Generate Study Summary</button>
     </header>
 
     <main class="main">
       <section class="panel-section">
         <header class="section-header">
-          <h2>PICO Summary</h2>
+          <h2>Structured Summary</h2>
           <div class="section-actions">
             <button class="ghost" id="refreshSummaryBtn" title="Re-run analysis">
               Refresh
@@ -26,13 +26,13 @@
           </div>
         </header>
         <div id="picoOutput" class="section-body empty-state">
-          <p>No summary yet. Select text or press the button to analyze the current paper.</p>
+          <p>No summary yet. Press the button above to generate a framework-aligned summary (PICO, PRISMA, STROBE, STARD, CARE, COREQ, or general).</p>
         </div>
       </section>
 
       <section class="panel-section">
         <header class="section-header">
-          <h2>Methodology Rigor</h2>
+          <h2>Methodology Assessment</h2>
           <div class="section-actions">
             <button class="ghost" id="methodologyBtn" title="Run methodology scanner">
               Scan Methods
@@ -40,16 +40,16 @@
           </div>
         </header>
         <div id="methodologyOutput" class="section-body empty-state">
-          <p>Choose a methods section and trigger "Scan Methodology" from the context menu.</p>
+          <p>Highlight a methods section in the paper and use "Scan Methodology" from the context menu or button above.</p>
         </div>
       </section>
 
       <section class="panel-section">
         <header class="section-header">
-          <h2>Jargon Simplifier</h2>
+          <h2>Plain Language Simplifier</h2>
         </header>
         <div id="simplifierOutput" class="section-body empty-state">
-          <p>Highlight text in the paper and pick "MedLit: Simplify Medical Jargon" to see results here.</p>
+          <p>Highlight complex medical or technical text, then select "MedLit: Simplify Medical Jargon" from the context menu.</p>
         </div>
       </section>
 
@@ -58,7 +58,7 @@
           <h2>Translation</h2>
         </header>
         <div id="translationOutput" class="section-body empty-state">
-          <p>Translate abstracts and sections from other languages with the context menu option.</p>
+          <p>Translate non-English text to English using the "MedLit: Translate Abstract" context menu option.</p>
         </div>
       </section>
     </main>

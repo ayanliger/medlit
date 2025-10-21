@@ -417,13 +417,63 @@ function normalizeClassification(result) {
   const dataType = result?.data?.studyType;
   const dataFramework = result?.data?.framework;
   const cls = result?.classification?.data;
-  if (!dataType && !dataFramework && !cls) return null;
+  const designType = result?.data?.studyDesign?.type;
+  
+  if (!dataType && !dataFramework && !cls && !designType) return null;
+  
+  // Fallback: if classifier returned "Other" but studyDesign.type has a real value, use that
+  let finalType = dataType || cls?.studyType || "";
+  if ((finalType === "Other" || finalType === "") && designType && designType !== "Other" && designType !== "Unknown") {
+    finalType = normalizeStudyTypeValue(designType);
+  }
+  
+  // Infer framework from study type if not provided
+  let finalFramework = dataFramework || cls?.framework || "";
+  if ((finalFramework === "None" || finalFramework === "") && finalType && finalType !== "Other") {
+    finalFramework = inferFrameworkFromType(finalType);
+  }
+  
   return {
-    studyType: dataType || cls?.studyType || "",
-    framework: dataFramework || cls?.framework || "",
+    studyType: finalType,
+    framework: finalFramework,
     confidence: cls?.confidence ?? null,
     reasons: cls?.reasons ?? []
   };
+}
+
+function normalizeStudyTypeValue(value) {
+  if (!value) return "";
+  const v = String(value).trim();
+  // Map common studyDesign.type values to canonical classification types
+  if (v === "RCT" || v.includes("Randomized")) return "RCT";
+  if (v === "Cohort") return "Cohort";
+  if (v === "Case-Control") return "Case-Control";
+  if (v === "Cross-Sectional") return "Cross-Sectional";
+  if (v === "Systematic Review") return "Systematic Review";
+  if (v === "Meta-Analysis") return "Meta-Analysis";
+  if (v === "Diagnostic Accuracy") return "Diagnostic Accuracy";
+  if (v === "Case Report") return "Case Report";
+  if (v === "Case Series") return "Case Series";
+  if (v === "Qualitative") return "Qualitative";
+  if (v === "Basic Science") return "Basic Science";
+  return v;
+}
+
+function inferFrameworkFromType(studyType) {
+  const mapping = {
+    "RCT": "CONSORT",
+    "Cohort": "STROBE",
+    "Case-Control": "STROBE",
+    "Cross-Sectional": "STROBE",
+    "Systematic Review": "PRISMA",
+    "Meta-Analysis": "PRISMA",
+    "Diagnostic Accuracy": "STARD",
+    "Case Report": "CARE",
+    "Case Series": "CARE",
+    "Qualitative": "COREQ",
+    "Basic Science": "None"
+  };
+  return mapping[studyType] || "None";
 }
 
 function renderDefinitionValue(value) {

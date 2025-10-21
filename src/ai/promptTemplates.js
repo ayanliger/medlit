@@ -13,23 +13,39 @@ ${metadataBlock}
 PAPER TEXT:
 ${context}
 
-Respond ONLY with JSON:
+Respond ONLY with valid JSON using EXACT values from the enums below:
 {
-  "studyType": "RCT|Cohort|Case-Control|Cross-Sectional|Systematic Review|Meta-Analysis|Diagnostic Accuracy|Case Report|Case Series|Qualitative|Basic Science|Other",
-  "framework": "CONSORT|STROBE|PRISMA|STARD|CARE|COREQ|PICO|None",
-  "confidence": 0.0,
-  "reasons": ["short evidence-based reasons from the text"]
+  "studyType": "RCT",
+  "framework": "CONSORT",
+  "confidence": 0.95,
+  "reasons": ["evidence-based reason 1", "evidence-based reason 2"]
 }
 
-Rules:
-- If interventional (RCT/clinical trial), prefer CONSORT and PICO for extraction.
-- Cohort/case-control/cross-sectional → STROBE.
-- Systematic review/meta-analysis → PRISMA.
-- Diagnostic accuracy → STARD.
-- Case report/series → CARE.
-- Qualitative → COREQ.
-- Basic science/bench → None (no clinical framework); use general summary only.
-- Base decisions on explicit text (e.g., "randomized", "systematic review", "sensitivity/specificity", etc.).
+IMPORTANT: Both studyType AND framework MUST be filled with enum values from these lists:
+- studyType: RCT, Cohort, Case-Control, Cross-Sectional, Systematic Review, Meta-Analysis, Diagnostic Accuracy, Case Report, Case Series, Qualitative, Basic Science, Other
+- framework: CONSORT, STROBE, PRISMA, STARD, CARE, COREQ, PICO, None
+
+CRITICAL: Use EXACT enum values. Examples:
+- "randomized controlled trial" or "phase 3 trial" → studyType = "RCT", framework = "CONSORT"
+- "cohort study" → studyType = "Cohort", framework = "STROBE"
+- "systematic review" → studyType = "Systematic Review", framework = "PRISMA"
+- "meta-analysis" → studyType = "Meta-Analysis", framework = "PRISMA"
+- "diagnostic accuracy" or "sensitivity/specificity" → studyType = "Diagnostic Accuracy", framework = "STARD"
+- "case report" → studyType = "Case Report", framework = "CARE"
+- "qualitative study" → studyType = "Qualitative", framework = "COREQ"
+- "in vitro" or "animal model" → studyType = "Basic Science", framework = "None"
+
+Mapping rules:
+1. Interventional/RCT/clinical trial → studyType="RCT", framework="CONSORT"
+2. Cohort/case-control/cross-sectional → studyType="Cohort|Case-Control|Cross-Sectional", framework="STROBE"
+3. Systematic review/meta-analysis → studyType="Systematic Review|Meta-Analysis", framework="PRISMA"
+4. Diagnostic test evaluation → studyType="Diagnostic Accuracy", framework="STARD"
+5. Single or few patient cases → studyType="Case Report|Case Series", framework="CARE"
+6. Interviews/focus groups/themes → studyType="Qualitative", framework="COREQ"
+7. Bench/lab/molecular → studyType="Basic Science", framework="None"
+8. If none fit → studyType="Other", framework="None"
+
+Base classification on keywords: "randomized", "blinded", "placebo", "cohort", "prospective", "retrospective", "systematic review", "meta-analysis", "sensitivity", "specificity", "case report", "qualitative", "in vitro", "animal".
 `.trim();
 }
 
@@ -233,6 +249,137 @@ SCHEMA:
 Rules:
 - Use effect measures only if explicitly reported.
 - List key confounders adjusted for.
+`.trim();
+}
+
+// CARE-aligned summary for Case Reports / Case Series
+export function buildCaseReportPrompt(documentSnapshot) {
+  const { meta = {}, article = {} } = documentSnapshot ?? {};
+  const context = createContextBlock(article.textContent);
+  const metadataBlock = createMetadataBlock(meta);
+  return `
+You are extracting a CARE-aligned summary for a Case Report or Case Series. Return ONLY JSON.
+
+${metadataBlock}
+
+PAPER TEXT:
+${context}
+
+SCHEMA:
+{
+  "studyType": "Case Report|Case Series",
+  "framework": "CARE",
+  "studyDesign": {"type": "Case Report|Case Series", "setting": "", "studyPeriod": "", "registrationID": "N/A"},
+  "population": {"sampleSize": {"intervention": null, "control": null, "total": 1}, "demographics": {"age": "", "gender": "", "ethnicity": ""}, "inclusionCriteria": [], "exclusionCriteria": []},
+  "intervention": {"description": "Treatment/management provided", "dosage": "", "duration": ""},
+  "comparison": {"controlType": "None", "description": "N/A"},
+  "outcomes": {"primary": {"measure": "Patient outcome", "interventionResult": "outcome description", "controlResult": "N/A", "pValue": null, "confidenceInterval": "N/A", "effectSize": "N/A"}, "secondary": []},
+  "interpretation": {"NNT": "N/A", "interpretation": "clinical takeaway", "limitations": [], "applicability": "generalizability notes"},
+  "frameworkSpecific": {
+    "presentingComplaint": "",
+    "clinicalHistory": "",
+    "diagnosticAssessment": [""],
+    "therapeuticIntervention": "",
+    "followUp": "",
+    "outcomeDescription": "",
+    "patientPerspective": "",
+    "informedConsentObtained": null,
+    "keyLearningPoints": [""]
+  }
+}
+
+Rules:
+- Set total to the number of cases (1 for case report, N for case series).
+- Capture patient perspective if mentioned.
+- Include key learning points for clinical education.
+`.trim();
+}
+
+// COREQ-aligned summary for Qualitative Research
+export function buildQualitativePrompt(documentSnapshot) {
+  const { meta = {}, article = {} } = documentSnapshot ?? {};
+  const context = createContextBlock(article.textContent);
+  const metadataBlock = createMetadataBlock(meta);
+  return `
+You are extracting a COREQ-aligned summary for Qualitative Research. Return ONLY JSON.
+
+${metadataBlock}
+
+PAPER TEXT:
+${context}
+
+SCHEMA:
+{
+  "studyType": "Qualitative",
+  "framework": "COREQ",
+  "studyDesign": {"type": "Qualitative", "setting": "", "studyPeriod": "", "registrationID": "N/A"},
+  "population": {"sampleSize": {"intervention": null, "control": null, "total": null}, "demographics": {"age": "", "gender": "", "ethnicity": ""}, "inclusionCriteria": [], "exclusionCriteria": []},
+  "intervention": {"description": "N/A", "dosage": "N/A", "duration": "N/A"},
+  "comparison": {"controlType": "N/A", "description": "N/A"},
+  "outcomes": {"primary": {"measure": "Key themes/findings", "interventionResult": "major themes identified", "controlResult": "N/A", "pValue": null, "confidenceInterval": "N/A", "effectSize": "N/A"}, "secondary": []},
+  "interpretation": {"NNT": "N/A", "interpretation": "implications of findings", "limitations": [], "applicability": "transferability notes"},
+  "frameworkSpecific": {
+    "researchParadigm": "",
+    "methodologyApproach": "phenomenology|grounded theory|ethnography|case study|other",
+    "samplingStrategy": "",
+    "dataCollectionMethod": "interviews|focus groups|observations|documents",
+    "numberOfParticipants": null,
+    "dataAnalysisMethod": "",
+    "themesIdentified": [""],
+    "triangulation": "",
+    "memberChecking": null,
+    "reflexivity": "",
+    "saturation": ""
+  }
+}
+
+Rules:
+- Identify major themes from findings.
+- Capture qualitative rigor elements (triangulation, member checking, reflexivity).
+- Note if data saturation was achieved.
+`.trim();
+}
+
+// Basic Science / Bench Research (no clinical framework)
+export function buildBasicSciencePrompt(documentSnapshot) {
+  const { meta = {}, article = {} } = documentSnapshot ?? {};
+  const context = createContextBlock(article.textContent);
+  const metadataBlock = createMetadataBlock(meta);
+  return `
+You are extracting a general summary for Basic Science or Bench Research. Return ONLY JSON.
+
+${metadataBlock}
+
+PAPER TEXT:
+${context}
+
+SCHEMA:
+{
+  "studyType": "Basic Science",
+  "framework": "None",
+  "studyDesign": {"type": "Basic Science", "setting": "Laboratory", "studyPeriod": "", "registrationID": "N/A"},
+  "population": {"sampleSize": {"intervention": null, "control": null, "total": null}, "demographics": {"age": "N/A", "gender": "N/A", "ethnicity": "N/A"}, "inclusionCriteria": [], "exclusionCriteria": []},
+  "intervention": {"description": "Experimental manipulation", "dosage": "N/A", "duration": ""},
+  "comparison": {"controlType": "Control condition", "description": ""},
+  "outcomes": {"primary": {"measure": "Primary measured variable", "interventionResult": "experimental result", "controlResult": "control result", "pValue": null, "confidenceInterval": "", "effectSize": ""}, "secondary": []},
+  "interpretation": {"NNT": "N/A", "interpretation": "mechanistic insights", "limitations": [], "applicability": "translational potential"},
+  "frameworkSpecific": {
+    "researchQuestion": "",
+    "model": "in vitro|in vivo|computational|other",
+    "organism": "",
+    "keyTechniques": [""],
+    "mainFindings": [""],
+    "mechanisticInsights": "",
+    "novelty": "",
+    "replicationDetails": ""
+  }
+}
+
+Rules:
+- Describe the experimental model (cell line, animal model, computational, etc.).
+- List key techniques (Western blot, PCR, imaging, etc.).
+- Emphasize mechanistic insights and novelty.
+- Note if replication details are sufficient.
 `.trim();
 }
 
