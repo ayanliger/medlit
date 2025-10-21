@@ -244,6 +244,13 @@ if (AI_NAMESPACE?.languageModel?.create) { ... }
 - Extension will fall back to heuristic previews automatically
 - Retry the operation if results look incomplete
 
+### "No output language was specified" Warning (Non-Critical)
+- You may see this warning in `chrome://extensions` errors tab
+- **Status:** Known issue, does not affect functionality
+- The code correctly specifies `expectedOutputs: [{ type: "text", languages: ["en"] }]` per official Prompt API docs
+- Appears to be a Chrome internal warning that triggers despite proper API usage
+- All features work correctly despite the warning
+
 ## Future Enhancements
 
 - Test and refine export functionality

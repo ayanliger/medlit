@@ -17,50 +17,57 @@ REQUIRED JSON SCHEMA:
 {
   "studyDesign": {
     "type": "RCT|Cohort|Case-Control|Cross-Sectional|Meta-Analysis|Systematic Review|Other",
-    "setting": "string",
-    "studyPeriod": "string",
-    "registrationID": "string|null"
+    "setting": "description of clinical setting",
+    "studyPeriod": "timeframe like '2010-2015'",
+    "registrationID": "trial registry ID or 'Not registered'"
   },
   "population": {
-    "sampleSize": {"intervention": number|null, "control": number|null, "total": number|null},
-    "demographics": {"age": "string", "gender": "string", "ethnicity": "string"},
-    "inclusionCriteria": ["string"],
-    "exclusionCriteria": ["string"]
+    "sampleSize": {"intervention": 123, "control": 120, "total": 243},
+    "demographics": {"age": "mean age or age range", "gender": "gender distribution", "ethnicity": "ethnic breakdown"},
+    "inclusionCriteria": ["criterion 1", "criterion 2"],
+    "exclusionCriteria": ["criterion 1", "criterion 2"]
   },
   "intervention": {
-    "description": "string",
-    "dosage": "string",
-    "duration": "string"
+    "description": "detailed intervention description",
+    "dosage": "dosage amount and frequency",
+    "duration": "treatment duration"
   },
   "comparison": {
     "controlType": "placebo|active|standard care|none",
-    "description": "string"
+    "description": "description of comparator"
   },
   "outcomes": {
     "primary": {
-      "measure": "string",
-      "interventionResult": "string",
-      "controlResult": "string",
-      "pValue": "number|null",
-      "confidenceInterval": "string",
-      "effectSize": "string"
+      "measure": "primary outcome measure",
+      "interventionResult": "result for intervention group",
+      "controlResult": "result for control group",
+      "pValue": 0.05,
+      "confidenceInterval": "95% CI description",
+      "effectSize": "effect size with units"
     },
     "secondary": [
       {
-        "measure": "string",
-        "result": "string"
+        "measure": "secondary outcome name",
+        "result": "outcome result"
       }
     ]
   },
   "interpretation": {
-    "NNT": "number|null",
-    "interpretation": "string",
-    "limitations": ["string"],
-    "applicability": "string"
+    "NNT": 10,
+    "interpretation": "clinical interpretation of findings",
+    "limitations": ["limitation 1", "limitation 2"],
+    "applicability": "clinical applicability"
   }
 }
 
-ONLY return JSON. No Markdown, no explanations.
+IMPORTANT INSTRUCTIONS:
+- Use "Not specified" or "Not reported" for missing text fields (never use literal "string")
+- Use empty arrays [] for missing lists
+- Use "N/A" for inapplicable fields
+- For numeric fields, use actual numbers or omit the field entirely if not available
+- Extract actual values from the paper, not placeholder text
+
+ONLY return valid JSON. No Markdown, no explanations.
 `.trim();
 }
 
@@ -80,39 +87,49 @@ ${fullPaperContext}
 Return ONLY JSON with this exact structure:
 {
   "researchQuestionClarity": {
-    "score": 1-5,
-    "strengths": ["string"],
-    "concerns": ["string"]
+    "score": 3,
+    "strengths": ["specific strength description"],
+    "concerns": ["specific concern description"]
   },
   "sampleSizePower": {
-    "score": 1-5,
-    "calculated": "number|null",
-    "actual": "number|null",
-    "assessment": "string"
+    "score": 4,
+    "calculated": null,
+    "actual": null,
+    "assessment": "sample size justification or 'Not applicable for review/observational study'"
   },
   "randomization": {
-    "score": 1-5,
-    "method": "string",
-    "concerns": ["string"]
+    "score": 4,
+    "method": "randomization method description",
+    "concerns": ["specific randomization concern"]
   },
   "blinding": {
     "participants": true,
     "assessors": true,
     "analysts": false,
-    "concerns": ["string"]
+    "concerns": ["specific blinding concern"]
   },
   "statisticalApproach": {
-    "score": 1-5,
-    "methods": ["string"],
-    "strengths": ["string"],
-    "concerns": ["string"]
+    "score": 4,
+    "methods": ["statistical method 1", "method 2"],
+    "strengths": ["strength description"],
+    "concerns": ["concern description"]
   },
-  "overallQualityScore": 0-100,
-  "keyLimitations": ["string"],
-  "recommendation": "string"
+  "overallQualityScore": 75,
+  "keyLimitations": ["limitation 1", "limitation 2"],
+  "recommendation": "quality recommendation"
 }
 
-Remember: ONLY JSON, no comments.
+CRITICAL INSTRUCTIONS:
+- Use actual scores (1-5) based on the methods text
+- For reviews/observational studies: set calculated and actual to null, use "Not applicable" in assessment
+- For RCTs: only include sample size numbers if explicitly mentioned in the methods
+- Randomization: use "Not applicable" for non-randomized designs
+- Blinding: set all to false for reviews or unblinded studies
+- Never fabricate numbers - if not mentioned, use null or "Not reported"
+- Use empty arrays [] for missing strengths/concerns/limitations
+- Base ALL content on the actual methods text provided
+
+ONLY JSON, no comments.
 `.trim();
 }
 
@@ -127,12 +144,17 @@ ${context}
 
 Return ONLY JSON with:
 {
-  "plainEnglish": "string under 120 words",
+  "plainEnglish": "simplified explanation in plain English (under 120 words)",
   "keyTerms": [
-    {"term": "string", "definition": "string"}
+    {"term": "medical term", "definition": "plain English definition"}
   ],
-  "statisticsNotes": ["string"]
+  "statisticsNotes": ["statistical interpretation note"]
 }
+
+IMPORTANT:
+- Provide actual simplified text, not placeholder "string"
+- Use empty arrays [] if no terms or notes to add
+- Extract real medical terms with their definitions
 `.trim();
 }
 
@@ -151,12 +173,17 @@ ${fullTextContext}
 
 Return ONLY JSON:
 {
-  "keyHypothesis": ["string"],
-  "criticalFindings": ["string"],
-  "studyLimitations": ["string"],
-  "implications": ["string"],
-  "futureResearch": ["string"]
+  "keyHypothesis": ["main hypothesis or research question"],
+  "criticalFindings": ["key finding 1", "key finding 2"],
+  "studyLimitations": ["limitation 1", "limitation 2"],
+  "implications": ["clinical implication", "research implication"],
+  "futureResearch": ["suggested future study direction"]
 }
+
+IMPORTANT:
+- Extract actual content, never use placeholder "string"
+- Use empty arrays [] if no items to list
+- Be specific and descriptive in each point
 `.trim();
 }
 

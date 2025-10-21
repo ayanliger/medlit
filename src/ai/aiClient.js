@@ -27,7 +27,7 @@ export async function generateStructuredSummary(documentSnapshot) {
     systemPrompt: "You are a medical research analyst. Output strictly valid JSON.",
     temperature: 0.3,
     topK: 10
-  });
+  }, "en");
 
   if (!session) {
     return fallback;
@@ -72,7 +72,7 @@ export async function evaluateMethodology({ methodsText, fullText }) {
     systemPrompt: "You are a clinical trial methodologist. Output valid JSON.",
     temperature: 0.4,
     topK: 12
-  });
+  }, "en");
 
   if (!session) {
     return fallback;
@@ -119,11 +119,27 @@ export async function simplifyMedicalText(text) {
     try {
       const available = await Rewriter.availability();
       if (available !== 'unavailable') {
-        const rewriter = await Rewriter.create({
+        const rewriterOptions = {
           tone: "more-casual",
           length: "as-is",
           sharedContext: "Explain advanced medical research concepts to trainees"
-        });
+        };
+        
+        let rewriter;
+        try {
+          // Try with outputLanguage parameter first (newer API format)
+          rewriter = await Rewriter.create({ ...rewriterOptions, outputLanguage: "en" });
+        } catch (langError) {
+          // If outputLanguage not supported, try language parameter
+          try {
+            rewriter = await Rewriter.create({ ...rewriterOptions, language: "en" });
+          } catch (altError) {
+            // If neither works, try without language parameter
+            console.debug("MedLit: Rewriter language parameters not supported, using default");
+            rewriter = await Rewriter.create(rewriterOptions);
+          }
+        }
+        
         const rewritten = await rewriter.rewrite(trimmed);
         destroySession(rewriter);
         return {
@@ -146,7 +162,7 @@ export async function simplifyMedicalText(text) {
       "You are a medical educator simplifying complex research passages. Output valid JSON matching the provided schema.",
     temperature: 0.35,
     topK: 12
-  });
+  }, "en");
 
   if (!session) {
     return createFallbackSimplification(trimmed, MODEL_UNAVAILABLE_MESSAGE);
@@ -224,7 +240,7 @@ export async function translateToEnglish(text, detectedLanguage) {
       "You are a medical translator. Translate input text to English while preserving clinical terminology. Respond in valid JSON.",
     temperature: 0.2,
     topK: 10
-  });
+  }, "en");
 
   if (!session) {
     return createFallbackTranslation(trimmed, detectedLanguage, MODEL_UNAVAILABLE_MESSAGE);
@@ -275,7 +291,7 @@ export async function buildKeyPointsExport(summaryMarkdown, fullText) {
     systemPrompt: "You structure medical study highlights for export. Output valid JSON.",
     temperature: 0.35,
     topK: 12
-  });
+  }, "en");
 
   if (!session) {
     return createFallbackKeyPoints(fullText);
@@ -305,7 +321,7 @@ export async function buildKeyPointsExport(summaryMarkdown, fullText) {
   }
 }
 
-async function createLanguageModelSession(options) {
+async function createLanguageModelSession(options, language = "en") {
   if (typeof LanguageModel === 'undefined') {
     return null;
   }
@@ -315,7 +331,33 @@ async function createLanguageModelSession(options) {
     if (available === 'unavailable') {
       return null;
     }
-    return await LanguageModel.create(options);
+    
+    // Per Prompt API docs: specify expected inputs/outputs with explicit language arrays
+    const sessionOptions = {};
+    
+    if (options.temperature !== undefined) {
+      sessionOptions.temperature = options.temperature;
+    }
+    if (options.topK !== undefined) {
+      sessionOptions.topK = options.topK;
+    }
+    
+    // Convert systemPrompt to initialPrompts format
+    if (options.systemPrompt) {
+      sessionOptions.initialPrompts = [
+        { role: "system", content: options.systemPrompt }
+      ];
+    }
+    
+    // MUST specify expectedOutputs per API docs to avoid "No output language" warning
+    sessionOptions.expectedInputs = [
+      { type: "text", languages: [language] }
+    ];
+    sessionOptions.expectedOutputs = [
+      { type: "text", languages: [language] }
+    ];
+    
+    return await LanguageModel.create(sessionOptions);
   } catch (error) {
     console.warn("MedLit: unable to create language model session", error);
     return null;

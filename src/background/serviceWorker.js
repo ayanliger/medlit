@@ -13,12 +13,18 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
 
-  await chrome.sidePanel.setOptions({
-    tabId: tab.id,
-    path: "src/sidepanel/index.html"
-  });
+  try {
+    await chrome.sidePanel.setOptions({
+      tabId: tab.id,
+      path: "src/sidepanel/index.html"
+    });
 
-  await chrome.sidePanel.open({ tabId: tab.id });
+    await chrome.sidePanel.open({ tabId: tab.id });
+  } catch (error) {
+    // Suppress error if side panel is already open or gesture timing issue
+    // Side panel will still open on user action
+    console.debug("MedLit: Side panel open info", error.message);
+  }
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {

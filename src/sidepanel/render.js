@@ -20,7 +20,7 @@ export function renderStructuredSummary(target, result) {
         ["Type", result.data.studyDesign?.type],
         ["Setting", result.data.studyDesign?.setting],
         ["Period", result.data.studyDesign?.studyPeriod],
-        ["Registration", result.data.studyDesign?.registrationID || "Not listed"]
+        ["Registration", sanitizePlaceholder(result.data.studyDesign?.registrationID) || "Not listed"]
       ]
     },
     {
@@ -73,7 +73,7 @@ export function renderStructuredSummary(target, result) {
     {
       title: "Interpretation",
       entries: [
-        ["NNT", result.data.interpretation?.NNT ?? "Not reported"],
+        ["NNT", sanitizePlaceholder(result.data.interpretation?.NNT) ?? "Not reported"],
         ["Interpretation", result.data.interpretation?.interpretation],
         [
           "Limitations",
@@ -267,11 +267,11 @@ function renderScoreCard(title, block, options = {}) {
   if (block.score !== undefined) {
     entries.push([
       "Score",
-      `<span class="score">${escapeHtml(String(block.score))}/5 ${renderScoreMeter(
+      { __html: `<span class="score">${escapeHtml(String(block.score))}/5 ${renderScoreMeter(
         block.score,
         5,
         true
-      )}</span>`
+      )}</span>` }
     ]);
   }
 
@@ -280,7 +280,7 @@ function renderScoreCard(title, block, options = {}) {
       if (typeof value === "boolean") {
         entries.push([
           capitalize(key),
-          renderBadge(value ? "Yes" : "No", value ? "info" : "warning")
+          { __html: renderBadge(value ? "Yes" : "No", value ? "info" : "warning") }
         ]);
       }
     }
@@ -294,13 +294,19 @@ function renderScoreCard(title, block, options = {}) {
     entries.push(["Methods", arrayDefinitionValue(block.methods, "Not specified")]);
   }
 
-  if (block.calculated !== undefined || block.actual !== undefined) {
+  // Only show sample size numbers if they're actually present (not null/N/A)
+  const calcSize = sanitizePlaceholder(block.calculated);
+  const actualSize = sanitizePlaceholder(block.actual);
+  
+  if (calcSize !== null || actualSize !== null) {
     entries.push([
       "Sample Size",
-      `Calculated: ${escapeHtml(formatNumber(block.calculated))}, Actual: ${escapeHtml(
-        formatNumber(block.actual)
-      )}`
+      `Calculated: ${formatNumber(calcSize)}, Actual: ${formatNumber(actualSize)}`
     ]);
+  }
+  
+  if (block.assessment) {
+    entries.push(["Assessment", block.assessment]);
   }
 
   const content = [
@@ -363,14 +369,18 @@ function renderDefinitionValue(value) {
   if (value && typeof value === "object" && "__html" in value) {
     return value.__html;
   }
+  
+  // Sanitize placeholder values from AI output
+  const sanitized = sanitizePlaceholder(value);
+  
   if (
-    value === undefined ||
-    value === null ||
-    (typeof value === "string" && value.trim().length === 0)
+    sanitized === undefined ||
+    sanitized === null ||
+    (typeof sanitized === "string" && sanitized.trim().length === 0)
   ) {
     return `<span class="empty-text">—</span>`;
   }
-  return sanitizeHtml(String(value));
+  return sanitizeHtml(String(sanitized));
 }
 
 function renderBulletList(items = [], emptyMessage = "No items.") {
@@ -412,12 +422,22 @@ function formatSampleSize(sample) {
   if (!sample) {
     return "Not specified";
   }
-  if (sample.total) {
-    return `Total ${formatNumber(sample.total)} (Intervention ${formatNumber(
-      sample.intervention
-    )}, Control ${formatNumber(sample.control)})`;
+  
+  const total = sanitizePlaceholder(sample.total);
+  const intervention = sanitizePlaceholder(sample.intervention);
+  const control = sanitizePlaceholder(sample.control);
+  
+  if (total) {
+    return `Total ${formatNumber(total)} (Intervention ${formatNumber(
+      intervention
+    )}, Control ${formatNumber(control)})`;
   }
-  return `Intervention ${formatNumber(sample.intervention)}, Control ${formatNumber(sample.control)}`;
+  
+  if (intervention || control) {
+    return `Intervention ${formatNumber(intervention)}, Control ${formatNumber(control)}`;
+  }
+  
+  return "Not specified";
 }
 
 function summarizeDemographics(demo) {
@@ -426,9 +446,13 @@ function summarizeDemographics(demo) {
   }
 
   const parts = [];
-  if (demo.age) parts.push(`Age: ${demo.age}`);
-  if (demo.gender) parts.push(`Gender: ${demo.gender}`);
-  if (demo.ethnicity) parts.push(`Ethnicity: ${demo.ethnicity}`);
+  const age = sanitizePlaceholder(demo.age);
+  const gender = sanitizePlaceholder(demo.gender);
+  const ethnicity = sanitizePlaceholder(demo.ethnicity);
+  
+  if (age) parts.push(`Age: ${age}`);
+  if (gender) parts.push(`Gender: ${gender}`);
+  if (ethnicity) parts.push(`Ethnicity: ${ethnicity}`);
   return parts.length ? parts.join(" • ") : "Not specified";
 }
 
@@ -453,6 +477,31 @@ function arrayDefinitionValue(items, fallback, options = {}) {
   }
 
   return items.join("; ");
+}
+
+function sanitizePlaceholder(value) {
+  // Catch literal placeholder values that AI might return
+  if (value === null || value === undefined) {
+    return null;
+  }
+  
+  const str = String(value).trim();
+  
+  // Check for literal type placeholders
+  const placeholders = [
+    "string",
+    "number",
+    "null",
+    "undefined",
+    "[object Object]",
+    "NaN"
+  ];
+  
+  if (placeholders.includes(str.toLowerCase())) {
+    return null;
+  }
+  
+  return value;
 }
 
 function escapeHtml(value) {
