@@ -2,7 +2,11 @@ import {
   buildKeyPointsPrompt,
   buildMethodologyPrompt,
   buildSimplificationPrompt,
-  buildStructuredSummaryPrompt
+  buildStructuredSummaryPrompt,
+  buildStudyTypePrompt,
+  buildSystematicReviewPrompt,
+  buildDiagnosticAccuracyPrompt,
+  buildObservationalPrompt
 } from "./promptTemplates.js";
 import {
   createFallbackSummary,
@@ -14,15 +18,21 @@ import {
 import { MODEL_UNAVAILABLE_MESSAGE } from "../shared/constants.js";
 
 /**
- * Generates a structured PICO summary of a medical research paper
+ * Generates a framework-aware structured summary of a medical research paper
+ * Steps:
+ * 1) Classify study type and framework
+ * 2) Use an appropriate prompt template
+ * 3) Always include studyType/framework in the output; include frameworkSpecific when applicable
  * @param {Object} documentSnapshot - Document snapshot containing meta and article content
- * @param {Object} documentSnapshot.meta - Document metadata (title, URL, etc.)
- * @param {Object} documentSnapshot.article - Article content
- * @returns {Promise<Object>} Structured summary with PICO framework data
+ * @returns {Promise<Object>} Structured summary object
  */
 export async function generateStructuredSummary(documentSnapshot) {
   const fallback = createFallbackSummary(documentSnapshot, MODEL_UNAVAILABLE_MESSAGE);
 
+  // 1) Attempt study-type classification first (separate short session)
+  const classification = await detectStudyType(documentSnapshot);
+
+  // 2) Create main session for extraction
   const session = await createLanguageModelSession({
     systemPrompt: "You are a medical research analyst. Output strictly valid JSON.",
     temperature: 0.3,
@@ -30,11 +40,31 @@ export async function generateStructuredSummary(documentSnapshot) {
   }, "en");
 
   if (!session) {
+    // Attach classification (if any) to the fallback output
+    if (classification?.data) {
+      fallback.data.studyType = classification.data.studyType || fallback.data.studyType;
+      fallback.data.framework = classification.data.framework || fallback.data.framework;
+    }
     return fallback;
   }
 
   try {
-    const prompt = buildStructuredSummaryPrompt(documentSnapshot);
+    // 3) Choose prompt based on classification
+    const type = classification?.data?.studyType || "Other";
+    const framework = classification?.data?.framework || "None";
+
+    let prompt;
+    if (type === "Systematic Review" || type === "Meta-Analysis") {
+      prompt = buildSystematicReviewPrompt(documentSnapshot);
+    } else if (type === "Diagnostic Accuracy") {
+      prompt = buildDiagnosticAccuracyPrompt(documentSnapshot);
+    } else if (type === "Cohort" || type === "Case-Control" || type === "Cross-Sectional") {
+      prompt = buildObservationalPrompt(documentSnapshot);
+    } else {
+      // Default to PICO-style clinical extraction
+      prompt = buildStructuredSummaryPrompt(documentSnapshot);
+    }
+
     const response = await session.prompt(prompt);
     const parsed = safeJsonParse(response);
 
@@ -42,17 +72,31 @@ export async function generateStructuredSummary(documentSnapshot) {
       throw new Error("Language model returned invalid JSON.");
     }
 
+    // Ensure classification annotations are present
+    if (!parsed.studyType && classification?.data?.studyType) {
+      parsed.studyType = classification.data.studyType;
+    }
+    if (!parsed.framework && classification?.data?.framework) {
+      parsed.framework = classification.data.framework;
+    }
+
     return {
       source: "chrome-ai-language-model",
       generatedAt: new Date().toISOString(),
+      classification,
       data: parsed
     };
   } catch (error) {
     console.warn("MedLit: falling back for structured summary", error);
-    return {
+    const result = {
       ...fallback,
       warning: error.message
     };
+    if (classification?.data) {
+      result.data.studyType = classification.data.studyType || result.data.studyType;
+      result.data.framework = classification.data.framework || result.data.framework;
+    }
+    return result;
   } finally {
     destroySession(session);
   }
@@ -316,6 +360,43 @@ export async function buildKeyPointsExport(summaryMarkdown, fullText) {
       ...createFallbackKeyPoints(fullText),
       warning: error.message
     };
+  } finally {
+    destroySession(session);
+  }
+}
+
+export async function detectStudyType(documentSnapshot) {
+  // Lightweight session for classification; safe to return null on failure
+  const session = await createLanguageModelSession({
+    systemPrompt: "You classify medical study type and appropriate framework. Output valid JSON only.",
+    temperature: 0.1,
+    topK: 8
+  }, "en");
+
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const prompt = buildStudyTypePrompt(documentSnapshot);
+    const response = await session.prompt(prompt);
+    const parsed = safeJsonParse(response);
+    if (!parsed) {
+      throw new Error("Invalid JSON from classifier");
+    }
+    return {
+      source: "chrome-ai-language-model",
+      generatedAt: new Date().toISOString(),
+      data: {
+        studyType: parsed.studyType || "Other",
+        framework: parsed.framework || "None",
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : null,
+        reasons: Array.isArray(parsed.reasons) ? parsed.reasons : []
+      }
+    };
+  } catch (error) {
+    console.debug("MedLit: study type classification failed", error);
+    return null;
   } finally {
     destroySession(session);
   }

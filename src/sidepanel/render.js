@@ -13,11 +13,25 @@ export function renderStructuredSummary(target, result) {
     return;
   }
 
+  const classification = normalizeClassification(result);
+
   const sections = [
+    classification && {
+      title: "Study Classification",
+      entries: [
+        ["Study Type", classification.studyType],
+        ["Framework", classification.framework],
+        ["Classifier Confidence", classification.confidence != null ? `${Math.round(classification.confidence * 100)}%` : "—"],
+        [
+          "Reasons",
+          classification.reasons?.length ? { __html: renderBulletList(classification.reasons) } : "—"
+        ]
+      ].filter(Boolean)
+    },
     {
       title: "Study Design",
       entries: [
-        ["Type", result.data.studyDesign?.type],
+        ["Type", result.data.studyDesign?.type || classification?.studyType],
         ["Setting", result.data.studyDesign?.setting],
         ["Period", result.data.studyDesign?.studyPeriod],
         ["Registration", sanitizePlaceholder(result.data.studyDesign?.registrationID) || "Not listed"]
@@ -81,8 +95,12 @@ export function renderStructuredSummary(target, result) {
         ],
         ["Applicability", result.data.interpretation?.applicability]
       ]
+    },
+    result.data.frameworkSpecific && Object.keys(result.data.frameworkSpecific).length > 0 && {
+      title: `${classification?.framework || result.data.framework || "Framework"} Details`,
+      customBody: renderFrameworkSpecific(result.data.frameworkSpecific)
     }
-  ];
+  ].filter(Boolean);
 
   const html = [
     renderResultMeta(result),
@@ -363,6 +381,49 @@ function renderDefinitionList(entries = []) {
     .join("");
 
   return `<dl class="dl">${html}</dl>`;
+}
+
+function renderFrameworkSpecific(obj = {}) {
+  if (!obj || typeof obj !== "object" || !Object.keys(obj).length) {
+    return `<p class="empty-text">No framework-specific details.</p>`;
+  }
+  const entries = Object.entries(obj).map(([k, v]) => [formatKey(k), normalizeValue(v)]);
+  return renderDefinitionList(entries);
+}
+
+function normalizeValue(v) {
+  if (Array.isArray(v)) {
+    const items = v.filter((x) => x != null && String(x).trim().length > 0);
+    return items.length ? { __html: renderBulletList(items) } : "—";
+  }
+  if (v && typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+  return v;
+}
+
+function formatKey(key) {
+  return String(key)
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function normalizeClassification(result) {
+  const dataType = result?.data?.studyType;
+  const dataFramework = result?.data?.framework;
+  const cls = result?.classification?.data;
+  if (!dataType && !dataFramework && !cls) return null;
+  return {
+    studyType: dataType || cls?.studyType || "",
+    framework: dataFramework || cls?.framework || "",
+    confidence: cls?.confidence ?? null,
+    reasons: cls?.reasons ?? []
+  };
 }
 
 function renderDefinitionValue(value) {
