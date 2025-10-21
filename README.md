@@ -172,15 +172,7 @@ if (AI_NAMESPACE?.languageModel?.create) { ... }
   - `fallbacks.js`: Heuristic responses when AI unavailable
 - **Prompt Templates:** Medical-domain prompt builders (PICO framework)
 - **Shared Utilities:** Centralized constants and messaging helpers
-
-### Recent Refactoring (2025-01-20)
-- Extracted rendering logic into separate module (~500 lines)
-- Created shared constants for message types and errors
-- Isolated fallback creation functions
-- Added JSDoc documentation to main functions
-- Reduced `main.js` from 816 to 365 lines (55% reduction)
-- Improved code organization and maintainability
-
+  
 ## Usage
 
 ### Getting Started
