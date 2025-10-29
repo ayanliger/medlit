@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "MedLit",
   "short_name": "MedLit",
-  "version": "0.2.1",
-  "version_name": "0.2.1 Alpha",
+  "version": "0.2.2",
+  "version_name": "0.2.2 Alpha",
   "description": "MedLit accelerates medical literature review with on-device Chrome AI for structured summaries, methodology checks, and jargon simplification.",
   "minimum_chrome_version": "122",
   "icons": {

@@ -21,10 +21,10 @@ export function renderStructuredSummary(target, result) {
       entries: [
         ["Study Type", classification.studyType],
         ["Framework", classification.framework],
-        ["Classifier Confidence", classification.confidence != null ? `${Math.round(classification.confidence * 100)}%` : "—"],
-        [
+        classification.confidence != null && ["Classifier Confidence", `${Math.round(classification.confidence * 100)}%`],
+        classification.reasons?.length > 0 && [
           "Reasons",
-          classification.reasons?.length ? { __html: renderBulletList(classification.reasons) } : "—"
+          { __html: renderBulletList(classification.reasons) }
         ]
       ].filter(Boolean)
     },
@@ -266,6 +266,12 @@ function renderResultMeta(result) {
 
 function renderSectionCard(section) {
   const content = section.customBody || renderDefinitionList(section.entries);
+  
+  // Don't render sections that are completely empty
+  if (content.includes('No detailed data available') && !section.customBody) {
+    return '';
+  }
+  
   return `<div class="result-card">
     <h3>${escapeHtml(section.title)}</h3>
     ${content}
@@ -373,7 +379,16 @@ function renderDefinitionList(entries = []) {
     return `<p class="empty-text">No data available.</p>`;
   }
 
-  const html = normalized
+  // Filter out entries with empty/placeholder values
+  const filteredEntries = normalized.filter(([key, value]) => {
+    return hasRealValue(value);
+  });
+
+  if (!filteredEntries.length) {
+    return `<p class="empty-text">No detailed data available.</p>`;
+  }
+
+  const html = filteredEntries
     .map(
       ([key, value]) =>
         `<dt>${escapeHtml(String(key))}</dt><dd>${renderDefinitionValue(value)}</dd>`
@@ -494,6 +509,56 @@ function renderDefinitionValue(value) {
   return sanitizeHtml(String(sanitized));
 }
 
+/**
+ * Checks if a value contains real, meaningful data (not empty or placeholder)
+ * @param {*} value - The value to check
+ * @returns {boolean} True if the value is meaningful, false otherwise
+ */
+function hasRealValue(value) {
+  // Handle special HTML objects (like bullet lists)
+  if (value && typeof value === "object" && "__html" in value) {
+    const htmlContent = value.__html;
+    // Check if the HTML contains actual content (not just empty states)
+    if (typeof htmlContent === "string") {
+      const stripped = htmlContent.replace(/<[^>]*>/g, "").trim();
+      return stripped.length > 0 && 
+             !stripped.includes("No items") && 
+             !stripped.includes("Not specified") &&
+             !stripped.includes("Not listed");
+    }
+  }
+  
+  const sanitized = sanitizePlaceholder(value);
+  
+  // Null, undefined, or empty string
+  if (
+    sanitized === undefined ||
+    sanitized === null ||
+    (typeof sanitized === "string" && sanitized.trim().length === 0)
+  ) {
+    return false;
+  }
+  
+  // Check for common placeholder strings
+  const strValue = String(sanitized).trim().toLowerCase();
+  const placeholders = [
+    "not specified",
+    "not reported",
+    "not listed",
+    "not provided",
+    "not applicable",
+    "not registered",
+    "n/a",
+    "na",
+    "none",
+    "—",
+    "-",
+    "unknown"
+  ];
+  
+  return !placeholders.includes(strValue);
+}
+
 function renderBulletList(items = [], emptyMessage = "No items.") {
   const normalized = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!normalized.length) {
@@ -531,29 +596,46 @@ function renderScoreMeter(value, max, compact = false) {
 
 function formatSampleSize(sample) {
   if (!sample) {
-    return "Not specified";
+    return null; // Return null to trigger filtering
   }
   
   const total = sanitizePlaceholder(sample.total);
   const intervention = sanitizePlaceholder(sample.intervention);
   const control = sanitizePlaceholder(sample.control);
   
+  // Only format if we have at least one real value
+  if (!total && !intervention && !control) {
+    return null;
+  }
+  
+  const parts = [];
+  
   if (total) {
-    return `Total ${formatNumber(total)} (Intervention ${formatNumber(
-      intervention
-    )}, Control ${formatNumber(control)})`;
+    parts.push(`Total ${formatNumber(total)}`);
   }
   
-  if (intervention || control) {
-    return `Intervention ${formatNumber(intervention)}, Control ${formatNumber(control)}`;
+  const groupParts = [];
+  if (intervention) {
+    groupParts.push(`Intervention ${formatNumber(intervention)}`);
+  }
+  if (control) {
+    groupParts.push(`Control ${formatNumber(control)}`);
   }
   
-  return "Not specified";
+  if (groupParts.length > 0) {
+    if (parts.length > 0) {
+      parts[0] += ` (${groupParts.join(", ")})`;
+    } else {
+      parts.push(groupParts.join(", "));
+    }
+  }
+  
+  return parts.join(", ") || null;
 }
 
 function summarizeDemographics(demo) {
   if (!demo) {
-    return "Not specified";
+    return null;
   }
 
   const parts = [];
@@ -564,7 +646,8 @@ function summarizeDemographics(demo) {
   if (age) parts.push(`Age: ${age}`);
   if (gender) parts.push(`Gender: ${gender}`);
   if (ethnicity) parts.push(`Ethnicity: ${ethnicity}`);
-  return parts.length ? parts.join(" • ") : "Not specified";
+  
+  return parts.length ? parts.join(" • ") : null;
 }
 
 function normalizeStatistic(value) {
