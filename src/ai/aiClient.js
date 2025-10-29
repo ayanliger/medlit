@@ -37,7 +37,9 @@ export async function generateStructuredSummary(documentSnapshot) {
 
   // 2) Create main session for extraction
   const session = await createLanguageModelSession({
-    systemPrompt: "You are a medical research analyst. Output strictly valid JSON.",
+    initialPrompts: [
+      { role: "system", content: "You are a medical research analyst. Output strictly valid JSON." }
+    ],
     temperature: 0.3,
     topK: 10
   }, "en");
@@ -122,7 +124,9 @@ export async function evaluateMethodology({ methodsText, fullText }) {
   const fallback = createFallbackMethodology(methodsText, MODEL_UNAVAILABLE_MESSAGE);
 
   const session = await createLanguageModelSession({
-    systemPrompt: "You are a clinical trial methodologist. Output valid JSON.",
+    initialPrompts: [
+      { role: "system", content: "You are a clinical trial methodologist. Output valid JSON." }
+    ],
     temperature: 0.4,
     topK: 12
   }, "en");
@@ -180,14 +184,15 @@ export async function simplifyMedicalText(text) {
         
         let rewriter;
         try {
-          // Try with outputLanguage parameter first (newer API format)
+          // Try with outputLanguage parameter first (official documented parameter per Chrome AI docs)
+          // This triple-fallback strategy handles API evolution gracefully across Chrome versions
           rewriter = await Rewriter.create({ ...rewriterOptions, outputLanguage: "en" });
         } catch (langError) {
-          // If outputLanguage not supported, try language parameter
+          // Fallback: Try legacy language parameter for older Chrome versions
           try {
             rewriter = await Rewriter.create({ ...rewriterOptions, language: "en" });
           } catch (altError) {
-            // If neither works, try without language parameter
+            // Final fallback: Create without language parameter (browser uses default)
             console.debug("MedLit: Rewriter language parameters not supported, using default");
             rewriter = await Rewriter.create(rewriterOptions);
           }
@@ -211,8 +216,9 @@ export async function simplifyMedicalText(text) {
   }
 
   const session = await createLanguageModelSession({
-    systemPrompt:
-      "You are a medical educator simplifying complex research passages. Output valid JSON matching the provided schema.",
+    initialPrompts: [
+      { role: "system", content: "You are a medical educator simplifying complex research passages. Output valid JSON matching the provided schema." }
+    ],
     temperature: 0.35,
     topK: 12
   }, "en");
@@ -289,8 +295,9 @@ export async function translateToEnglish(text, detectedLanguage) {
   }
 
   const session = await createLanguageModelSession({
-    systemPrompt:
-      "You are a medical translator. Translate input text to English while preserving clinical terminology. Respond in valid JSON.",
+    initialPrompts: [
+      { role: "system", content: "You are a medical translator. Translate input text to English while preserving clinical terminology. Respond in valid JSON." }
+    ],
     temperature: 0.2,
     topK: 10
   }, "en");
@@ -341,7 +348,9 @@ ${trimmed}
  */
 export async function buildKeyPointsExport(summaryMarkdown, fullText) {
   const session = await createLanguageModelSession({
-    systemPrompt: "You structure medical study highlights for export. Output valid JSON.",
+    initialPrompts: [
+      { role: "system", content: "You structure medical study highlights for export. Output valid JSON." }
+    ],
     temperature: 0.35,
     topK: 12
   }, "en");
@@ -377,7 +386,9 @@ export async function buildKeyPointsExport(summaryMarkdown, fullText) {
 export async function detectStudyType(documentSnapshot) {
   // Lightweight session for classification; safe to return null on failure
   const session = await createLanguageModelSession({
-    systemPrompt: "You classify medical study type and appropriate framework. Output valid JSON only.",
+    initialPrompts: [
+      { role: "system", content: "You classify medical study type and appropriate framework. Output valid JSON only." }
+    ],
     temperature: 0.1,
     topK: 8
   }, "en");
@@ -568,7 +579,17 @@ function inferFromReasons(reasonsText) {
   return result;
 }
 
-async function createLanguageModelSession(options, language = "en") {
+/**
+ * Creates a Chrome built-in AI LanguageModel session with proper configuration
+ * @param {Object} options - Session configuration options
+ * @param {Array<Object>} options.initialPrompts - Array of initial messages with role and content
+ * @param {number} [options.temperature] - Temperature parameter for response randomness
+ * @param {number} [options.topK] - Top-K parameter for token sampling
+ * @param {string} [language="en"] - Expected input/output language (BCP 47 code)
+ * @param {Function} [onProgress] - Optional callback for download progress: ({ loaded, total, percentage }) => void
+ * @returns {Promise<Object|null>} Language model session or null if unavailable
+ */
+async function createLanguageModelSession(options, language = "en", onProgress = null) {
   if (typeof LanguageModel === 'undefined') {
     return null;
   }
@@ -589,11 +610,18 @@ async function createLanguageModelSession(options, language = "en") {
       sessionOptions.topK = options.topK;
     }
     
-    // Convert systemPrompt to initialPrompts format
-    if (options.systemPrompt) {
-      sessionOptions.initialPrompts = [
-        { role: "system", content: options.systemPrompt }
-      ];
+    // Use initialPrompts array per official API documentation
+    if (options.initialPrompts) {
+      sessionOptions.initialPrompts = options.initialPrompts;
+    }
+    
+    // Add download progress monitoring for better UX
+    if (onProgress) {
+      sessionOptions.monitor = (m) => {
+        m.addEventListener('downloadprogress', (e) => {
+          onProgress({ loaded: e.loaded, total: e.total, percentage: e.loaded * 100 });
+        });
+      };
     }
     
     // MUST specify expectedOutputs per API docs to avoid "No output language" warning
