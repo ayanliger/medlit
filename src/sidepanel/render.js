@@ -78,23 +78,25 @@ export function renderStructuredSummary(target, result) {
         ["p-Value", normalizeStatistic(result.data.outcomes?.primary?.pValue)],
         ["Confidence Interval", result.data.outcomes?.primary?.confidenceInterval],
         ["Effect Size", result.data.outcomes?.primary?.effectSize]
-      ]
+      ].filter(entry => entry && hasRealValue(entry[1]))
     },
-    {
+    // Only include Secondary Outcomes section if there are actual outcomes
+    result.data.outcomes?.secondary?.length > 0 && {
       title: "Secondary Outcomes",
       customBody: renderSecondaryOutcomes(result.data.outcomes?.secondary)
     },
     {
       title: "Interpretation",
       entries: [
-        ["NNT", sanitizePlaceholder(result.data.interpretation?.NNT) ?? "Not reported"],
+        // Only show NNT if it has a real numeric value
+        sanitizePlaceholder(result.data.interpretation?.NNT) && !["not reported", "not calculated", "not applicable"].includes(String(result.data.interpretation?.NNT).toLowerCase()) && ["NNT", result.data.interpretation.NNT],
         ["Interpretation", result.data.interpretation?.interpretation],
         [
           "Limitations",
           arrayDefinitionValue(result.data.interpretation?.limitations, "Not listed", { bullet: true })
         ],
         ["Applicability", result.data.interpretation?.applicability]
-      ]
+      ].filter(Boolean)
     },
     result.data.frameworkSpecific && Object.keys(result.data.frameworkSpecific).length > 0 && {
       title: `${classification?.framework || result.data.framework || "Framework"} Details`,
@@ -134,7 +136,7 @@ export function renderMethodology(target, result) {
     renderResultMeta(result),
     `<div class="result-card">
       <h3>Overall Quality</h3>
-      ${renderScoreMeter(result.data.overallQualityScore, 100)}
+      ${renderScoreMeter(result.data.overallQualityScore, 100, false, true)}
     </div>`,
     ...cards,
     `<div class="result-card">
@@ -299,14 +301,22 @@ function renderScoreCard(title, block, options = {}) {
     ]);
   }
 
+  // Special condensed handling for Blinding section
   if (options.treatBooleansAsBadges) {
-    for (const [key, value] of Object.entries(block)) {
-      if (typeof value === "boolean") {
-        entries.push([
-          capitalize(key),
-          { __html: renderBadge(value ? "Yes" : "No", value ? "info" : "warning") }
-        ]);
-      }
+    const booleanFields = Object.entries(block).filter(([key, value]) => typeof value === "boolean");
+    
+    if (booleanFields.length > 0) {
+      const badges = booleanFields
+        .map(([key, value]) => {
+          const label = `${capitalize(key)}: ${value ? "Yes" : "No"}`;
+          return renderBadge(label, value ? "info" : "warning");
+        })
+        .join(" ");
+      
+      entries.push([
+        "Blinding Status",
+        { __html: badges }
+      ]);
     }
   }
 
@@ -323,14 +333,21 @@ function renderScoreCard(title, block, options = {}) {
   const actualSize = sanitizePlaceholder(block.actual);
   
   if (calcSize !== null || actualSize !== null) {
-    entries.push([
-      "Sample Size",
-      `Calculated: ${formatNumber(calcSize)}, Actual: ${formatNumber(actualSize)}`
-    ]);
+    const parts = [];
+    if (calcSize !== null) parts.push(`Calculated: ${formatNumber(calcSize)}`);
+    if (actualSize !== null) parts.push(`Actual: ${formatNumber(actualSize)}`);
+    entries.push(["Sample Size", parts.join(", ")]);
   }
   
-  if (block.assessment) {
-    entries.push(["Assessment", block.assessment]);
+  // Only show assessment if it has meaningful content
+  const assessment = sanitizePlaceholder(block.assessment);
+  if (assessment && !String(assessment).toLowerCase().includes("not applicable")) {
+    entries.push(["Assessment", assessment]);
+  }
+  
+  // Show justification/reasoning if available (useful for Randomization)
+  if (block.justification || block.reasoning) {
+    entries.push(["Justification", block.justification || block.reasoning]);
   }
 
   const content = [
@@ -582,14 +599,38 @@ function renderBadge(label, tone = "info") {
   return `<span class="${classes}">${escapeHtml(label)}</span>`;
 }
 
-function renderScoreMeter(value, max, compact = false) {
+function renderScoreMeter(value, max, compact = false, showPercentage = false) {
   const parsedValue = typeof value === "number" ? value : parseFloat(value);
   if (Number.isNaN(parsedValue)) {
     return `<span class="badge warning">N/A</span>`;
   }
   const ratio = Math.max(0, Math.min(parsedValue / max, 1));
-  const display = compact ? "" : `<span>${escapeHtml(String(value))}/${escapeHtml(String(max))}</span>`;
-  return `<span class="score-meter">${display}<span class="score-meter-fill" style="transform: scaleX(${ratio});"></span></span>`;
+  
+  // Color code the meter based on score quality
+  let colorClass = "";
+  if (max === 5) {
+    // /5 scale coloring
+    if (parsedValue >= 4) colorClass = "score-high";
+    else if (parsedValue >= 3) colorClass = "score-medium";
+    else colorClass = "score-low";
+  } else if (max === 100) {
+    // Percentage scale coloring
+    if (parsedValue >= 80) colorClass = "score-high";
+    else if (parsedValue >= 60) colorClass = "score-medium";
+    else colorClass = "score-low";
+  }
+  
+  // Display format: show percentage for /100 scores, fraction for /5 scores
+  let display = "";
+  if (!compact) {
+    if (showPercentage || max === 100) {
+      display = `<span class="score-value">${Math.round(parsedValue)}%</span>`;
+    } else {
+      display = `<span class="score-value">${escapeHtml(String(value))}/${escapeHtml(String(max))}</span>`;
+    }
+  }
+  
+  return `<span class="score-meter ${colorClass}">${display}<span class="score-meter-bar"><span class="score-meter-fill" style="transform: scaleX(${ratio});"></span></span></span>`;
 }
 
 // Formatting utilities
@@ -643,9 +684,16 @@ function summarizeDemographics(demo) {
   const gender = sanitizePlaceholder(demo.gender);
   const ethnicity = sanitizePlaceholder(demo.ethnicity);
   
-  if (age) parts.push(`Age: ${age}`);
-  if (gender) parts.push(`Gender: ${gender}`);
-  if (ethnicity) parts.push(`Ethnicity: ${ethnicity}`);
+  // Check for "not applicable" type values and skip them
+  const notApplicableCheck = (val) => {
+    if (!val) return false;
+    const str = String(val).toLowerCase();
+    return !str.includes("not applicable") && !str.includes("n/a");
+  };
+  
+  if (age && notApplicableCheck(age)) parts.push(`Age: ${age}`);
+  if (gender && notApplicableCheck(gender)) parts.push(`Gender: ${gender}`);
+  if (ethnicity && notApplicableCheck(ethnicity)) parts.push(`Ethnicity: ${ethnicity}`);
   
   return parts.length ? parts.join(" • ") : null;
 }

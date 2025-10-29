@@ -241,6 +241,18 @@ body {
 }
 
 .score-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-meter .score-value {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 42px;
+}
+
+.score-meter-bar {
   position: relative;
   width: 70px;
   height: 6px;
@@ -255,6 +267,19 @@ body {
   background: var(--accent);
   transform-origin: left center;
   transform: scaleX(0);
+}
+
+/* Color-coded score meters based on quality */
+.score-meter.score-high .score-meter-fill {
+  background: #22c55e; /* Green for high scores (4-5) */
+}
+
+.score-meter.score-medium .score-meter-fill {
+  background: #f59e0b; /* Amber/Orange for medium scores (3) */
+}
+
+.score-meter.score-low .score-meter-fill {
+  background: #ef4444; /* Red for low scores (1-2) */
 }
 
 .pill-list {
