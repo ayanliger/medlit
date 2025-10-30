@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedLit Icon Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2563eb; }
+        canvas {
+            border: 2px solid #ddd;
+            margin: 10px;
+            cursor: pointer;
+        }
+        canvas:hover {
+            border-color: #2563eb;
+        }
+        .instruction {
+            background: #eff6ff;
+            padding: 15px;
+            border-left: 4px solid #2563eb;
+            margin: 20px 0;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MedLit Icon Generator</h1>
+        
+        <div class="instruction">
+            <strong>Instructions:</strong> Right-click on each canvas below and select "Save image as..."<br>
+            Save them as: icon-16.png, icon-48.png, and icon-128.png in the icons folder.
+        </div>
+
+        <h3>16x16 Icon</h3>
+        <canvas id="icon16" width="16" height="16"></canvas>
+        
+        <h3>48x48 Icon</h3>
+        <canvas id="icon48" width="48" height="48"></canvas>
+        
+        <h3>128x128 Icon</h3>
+        <canvas id="icon128" width="128" height="128"></canvas>
+
+        <div style="margin-top: 20px;">
+            <button onclick="downloadAll()">Download All Icons</button>
+        </div>
+    </div>
+
+    <script>
+        function drawIcon(canvas) {
+            const ctx = canvas.getContext('2d');
+            const size = canvas.width;
+            const radius = size * 0.125; // 12.5% of size
+            
+            // Background
+            ctx.fillStyle = '#2563eb';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.625}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('M', size / 2, size / 2);
+        }
+
+        // Draw all icons
+        drawIcon(document.getElementById('icon16'));
+        drawIcon(document.getElementById('icon48'));
+        drawIcon(document.getElementById('icon128'));
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAll() {
+            downloadCanvas(document.getElementById('icon16'), 'icon-16.png');
+            setTimeout(() => downloadCanvas(document.getElementById('icon48'), 'icon-48.png'), 100);
+            setTimeout(() => downloadCanvas(document.getElementById('icon128'), 'icon-128.png'), 200);
+        }
+
+        // Make canvases downloadable on click
+        document.querySelectorAll('canvas').forEach((canvas, index) => {
+            canvas.addEventListener('click', () => {
+                const sizes = ['16', '48', '128'];
+                downloadCanvas(canvas, `icon-${sizes[index]}.png`);
+            });
+        });
+    </script>
+</body>
+</html>

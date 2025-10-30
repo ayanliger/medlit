@@ -21,11 +21,13 @@ MedLit is a Chrome extension that accelerates medical literature review with Chr
 - ✅ **Methodology rigor assessment** (Cochrane Risk of Bias framework)
 - ✅ **Medical jargon simplification**
 - ✅ **Multilingual translation** (with fallback when Translator API unavailable)
+- ✅ **Download progress monitoring** (model download feedback)
 - ✅ Side panel UI and rendering
 - ✅ Context menu integration
 - ✅ Document parsing and content extraction
 - ✅ Message passing between components
 - ✅ Fallback strategies when AI unavailable
+- ✅ Official API parameter formats (`initialPrompts`, `expectedInputs`, `expectedOutputs`)
 
 **Not Yet Tested:**
 - ⚠️ Export functionality (implemented but untested)
@@ -62,18 +64,28 @@ medlit/
 
 ## Chrome Built-in AI APIs - Implementation Notes
 
-### API Integration (Fixed)
+### API Integration (Updated 2025-01-29)
 
-The code now correctly uses Chrome's built-in AI APIs as global constructors:
+The code now correctly uses Chrome's built-in AI APIs as global constructors with official parameter formats:
 
 ```javascript
-// ✅ Correct
-if (typeof LanguageModel !== 'undefined') {
-  const availability = await LanguageModel.availability();
-  const session = await LanguageModel.create(options);
-}
+// ✅ Correct - Using documented initialPrompts parameter
+const session = await LanguageModel.create({
+  initialPrompts: [
+    { role: "system", content: "You are a helpful assistant." }
+  ],
+  temperature: 0.3,
+  topK: 10,
+  expectedInputs: [{ type: "text", languages: ["en"] }],
+  expectedOutputs: [{ type: "text", languages: ["en"] }],
+  monitor(m) {
+    m.addEventListener('downloadprogress', (e) => {
+      console.log(`Downloaded ${e.loaded * 100}%`);
+    });
+  }
+});
 
-// ❌ Previous incorrect approach
+// ❌ Previous approach (deprecated)
 const AI_NAMESPACE = chrome?.ai;
 if (AI_NAMESPACE?.languageModel?.create) { ... }
 ```
@@ -145,7 +157,24 @@ if (AI_NAMESPACE?.languageModel?.create) { ... }
 
 ## Recent Fixes
 
-### Issue: Incorrect API Implementation
+### Update 2025-01-29: API Parameter Modernization
+
+**Changes Applied:**
+1. **Updated to official `initialPrompts` parameter** - Replaced undocumented `systemPrompt` shorthand with documented `initialPrompts` array format
+2. **Added download progress monitoring** - Implemented `monitor` callback for model download feedback
+3. **Enhanced JSDoc documentation** - Added comprehensive parameter documentation for session creation
+4. **Documented Rewriter fallback strategy** - Added comments explaining triple-fallback for API version compatibility
+
+**Technical Details:**
+- All `createLanguageModelSession` calls now use `initialPrompts: [{ role: "system", content: "..." }]`
+- Optional `onProgress` callback parameter added for download monitoring
+- Verified against official Chrome AI documentation via Context7
+
+**Verification:** Code now matches official Chrome Built-in AI API documentation patterns.
+
+---
+
+### Previous Fix: Incorrect API Implementation
 
 **Problem:** Code used non-existent `chrome.ai` namespace and invalid manifest permissions.
 

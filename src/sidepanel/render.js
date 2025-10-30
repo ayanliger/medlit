@@ -13,11 +13,25 @@ export function renderStructuredSummary(target, result) {
     return;
   }
 
+  const classification = normalizeClassification(result);
+
   const sections = [
+    classification && {
+      title: "Study Classification",
+      entries: [
+        ["Study Type", classification.studyType],
+        ["Framework", classification.framework],
+        classification.confidence != null && ["Classifier Confidence", `${Math.round(classification.confidence * 100)}%`],
+        classification.reasons?.length > 0 && [
+          "Reasons",
+          { __html: renderBulletList(classification.reasons) }
+        ]
+      ].filter(Boolean)
+    },
     {
       title: "Study Design",
       entries: [
-        ["Type", result.data.studyDesign?.type],
+        ["Type", result.data.studyDesign?.type || classification?.studyType],
         ["Setting", result.data.studyDesign?.setting],
         ["Period", result.data.studyDesign?.studyPeriod],
         ["Registration", sanitizePlaceholder(result.data.studyDesign?.registrationID) || "Not listed"]
@@ -64,25 +78,31 @@ export function renderStructuredSummary(target, result) {
         ["p-Value", normalizeStatistic(result.data.outcomes?.primary?.pValue)],
         ["Confidence Interval", result.data.outcomes?.primary?.confidenceInterval],
         ["Effect Size", result.data.outcomes?.primary?.effectSize]
-      ]
+      ].filter(entry => entry && hasRealValue(entry[1]))
     },
-    {
+    // Only include Secondary Outcomes section if there are actual outcomes
+    result.data.outcomes?.secondary?.length > 0 && {
       title: "Secondary Outcomes",
       customBody: renderSecondaryOutcomes(result.data.outcomes?.secondary)
     },
     {
       title: "Interpretation",
       entries: [
-        ["NNT", sanitizePlaceholder(result.data.interpretation?.NNT) ?? "Not reported"],
+        // Only show NNT if it has a real numeric value
+        sanitizePlaceholder(result.data.interpretation?.NNT) && !["not reported", "not calculated", "not applicable"].includes(String(result.data.interpretation?.NNT).toLowerCase()) && ["NNT", result.data.interpretation.NNT],
         ["Interpretation", result.data.interpretation?.interpretation],
         [
           "Limitations",
           arrayDefinitionValue(result.data.interpretation?.limitations, "Not listed", { bullet: true })
         ],
         ["Applicability", result.data.interpretation?.applicability]
-      ]
+      ].filter(Boolean)
+    },
+    result.data.frameworkSpecific && Object.keys(result.data.frameworkSpecific).length > 0 && {
+      title: `${classification?.framework || result.data.framework || "Framework"} Details`,
+      customBody: renderFrameworkSpecific(result.data.frameworkSpecific)
     }
-  ];
+  ].filter(Boolean);
 
   const html = [
     renderResultMeta(result),
@@ -116,7 +136,7 @@ export function renderMethodology(target, result) {
     renderResultMeta(result),
     `<div class="result-card">
       <h3>Overall Quality</h3>
-      ${renderScoreMeter(result.data.overallQualityScore, 100)}
+      ${renderScoreMeter(result.data.overallQualityScore, 100, false, true)}
     </div>`,
     ...cards,
     `<div class="result-card">
@@ -248,6 +268,12 @@ function renderResultMeta(result) {
 
 function renderSectionCard(section) {
   const content = section.customBody || renderDefinitionList(section.entries);
+  
+  // Don't render sections that are completely empty
+  if (content.includes('No detailed data available') && !section.customBody) {
+    return '';
+  }
+  
   return `<div class="result-card">
     <h3>${escapeHtml(section.title)}</h3>
     ${content}
@@ -275,14 +301,22 @@ function renderScoreCard(title, block, options = {}) {
     ]);
   }
 
+  // Special condensed handling for Blinding section
   if (options.treatBooleansAsBadges) {
-    for (const [key, value] of Object.entries(block)) {
-      if (typeof value === "boolean") {
-        entries.push([
-          capitalize(key),
-          { __html: renderBadge(value ? "Yes" : "No", value ? "info" : "warning") }
-        ]);
-      }
+    const booleanFields = Object.entries(block).filter(([key, value]) => typeof value === "boolean");
+    
+    if (booleanFields.length > 0) {
+      const badges = booleanFields
+        .map(([key, value]) => {
+          const label = `${capitalize(key)}: ${value ? "Yes" : "No"}`;
+          return renderBadge(label, value ? "info" : "warning");
+        })
+        .join(" ");
+      
+      entries.push([
+        "Blinding Status",
+        { __html: badges }
+      ]);
     }
   }
 
@@ -299,14 +333,21 @@ function renderScoreCard(title, block, options = {}) {
   const actualSize = sanitizePlaceholder(block.actual);
   
   if (calcSize !== null || actualSize !== null) {
-    entries.push([
-      "Sample Size",
-      `Calculated: ${formatNumber(calcSize)}, Actual: ${formatNumber(actualSize)}`
-    ]);
+    const parts = [];
+    if (calcSize !== null) parts.push(`Calculated: ${formatNumber(calcSize)}`);
+    if (actualSize !== null) parts.push(`Actual: ${formatNumber(actualSize)}`);
+    entries.push(["Sample Size", parts.join(", ")]);
   }
   
-  if (block.assessment) {
-    entries.push(["Assessment", block.assessment]);
+  // Only show assessment if it has meaningful content
+  const assessment = sanitizePlaceholder(block.assessment);
+  if (assessment && !String(assessment).toLowerCase().includes("not applicable")) {
+    entries.push(["Assessment", assessment]);
+  }
+  
+  // Show justification/reasoning if available (useful for Randomization)
+  if (block.justification || block.reasoning) {
+    entries.push(["Justification", block.justification || block.reasoning]);
   }
 
   const content = [
@@ -355,7 +396,16 @@ function renderDefinitionList(entries = []) {
     return `<p class="empty-text">No data available.</p>`;
   }
 
-  const html = normalized
+  // Filter out entries with empty/placeholder values
+  const filteredEntries = normalized.filter(([key, value]) => {
+    return hasRealValue(value);
+  });
+
+  if (!filteredEntries.length) {
+    return `<p class="empty-text">No detailed data available.</p>`;
+  }
+
+  const html = filteredEntries
     .map(
       ([key, value]) =>
         `<dt>${escapeHtml(String(key))}</dt><dd>${renderDefinitionValue(value)}</dd>`
@@ -363,6 +413,99 @@ function renderDefinitionList(entries = []) {
     .join("");
 
   return `<dl class="dl">${html}</dl>`;
+}
+
+function renderFrameworkSpecific(obj = {}) {
+  if (!obj || typeof obj !== "object" || !Object.keys(obj).length) {
+    return `<p class="empty-text">No framework-specific details.</p>`;
+  }
+  const entries = Object.entries(obj).map(([k, v]) => [formatKey(k), normalizeValue(v)]);
+  return renderDefinitionList(entries);
+}
+
+function normalizeValue(v) {
+  if (Array.isArray(v)) {
+    const items = v.filter((x) => x != null && String(x).trim().length > 0);
+    return items.length ? { __html: renderBulletList(items) } : "—";
+  }
+  if (v && typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+  return v;
+}
+
+function formatKey(key) {
+  return String(key)
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function normalizeClassification(result) {
+  const dataType = result?.data?.studyType;
+  const dataFramework = result?.data?.framework;
+  const cls = result?.classification?.data;
+  const designType = result?.data?.studyDesign?.type;
+  
+  if (!dataType && !dataFramework && !cls && !designType) return null;
+  
+  // Fallback: if classifier returned "Other" but studyDesign.type has a real value, use that
+  let finalType = dataType || cls?.studyType || "";
+  if ((finalType === "Other" || finalType === "") && designType && designType !== "Other" && designType !== "Unknown") {
+    finalType = normalizeStudyTypeValue(designType);
+  }
+  
+  // Infer framework from study type if not provided
+  let finalFramework = dataFramework || cls?.framework || "";
+  if ((finalFramework === "None" || finalFramework === "") && finalType && finalType !== "Other") {
+    finalFramework = inferFrameworkFromType(finalType);
+  }
+  
+  return {
+    studyType: finalType,
+    framework: finalFramework,
+    confidence: cls?.confidence ?? null,
+    reasons: cls?.reasons ?? []
+  };
+}
+
+function normalizeStudyTypeValue(value) {
+  if (!value) return "";
+  const v = String(value).trim();
+  // Map common studyDesign.type values to canonical classification types
+  if (v === "RCT" || v.includes("Randomized")) return "RCT";
+  if (v === "Cohort") return "Cohort";
+  if (v === "Case-Control") return "Case-Control";
+  if (v === "Cross-Sectional") return "Cross-Sectional";
+  if (v === "Systematic Review") return "Systematic Review";
+  if (v === "Meta-Analysis") return "Meta-Analysis";
+  if (v === "Diagnostic Accuracy") return "Diagnostic Accuracy";
+  if (v === "Case Report") return "Case Report";
+  if (v === "Case Series") return "Case Series";
+  if (v === "Qualitative") return "Qualitative";
+  if (v === "Basic Science") return "Basic Science";
+  return v;
+}
+
+function inferFrameworkFromType(studyType) {
+  const mapping = {
+    "RCT": "CONSORT",
+    "Cohort": "STROBE",
+    "Case-Control": "STROBE",
+    "Cross-Sectional": "STROBE",
+    "Systematic Review": "PRISMA",
+    "Meta-Analysis": "PRISMA",
+    "Diagnostic Accuracy": "STARD",
+    "Case Report": "CARE",
+    "Case Series": "CARE",
+    "Qualitative": "COREQ",
+    "Basic Science": "None"
+  };
+  return mapping[studyType] || "None";
 }
 
 function renderDefinitionValue(value) {
@@ -381,6 +524,56 @@ function renderDefinitionValue(value) {
     return `<span class="empty-text">—</span>`;
   }
   return sanitizeHtml(String(sanitized));
+}
+
+/**
+ * Checks if a value contains real, meaningful data (not empty or placeholder)
+ * @param {*} value - The value to check
+ * @returns {boolean} True if the value is meaningful, false otherwise
+ */
+function hasRealValue(value) {
+  // Handle special HTML objects (like bullet lists)
+  if (value && typeof value === "object" && "__html" in value) {
+    const htmlContent = value.__html;
+    // Check if the HTML contains actual content (not just empty states)
+    if (typeof htmlContent === "string") {
+      const stripped = htmlContent.replace(/<[^>]*>/g, "").trim();
+      return stripped.length > 0 && 
+             !stripped.includes("No items") && 
+             !stripped.includes("Not specified") &&
+             !stripped.includes("Not listed");
+    }
+  }
+  
+  const sanitized = sanitizePlaceholder(value);
+  
+  // Null, undefined, or empty string
+  if (
+    sanitized === undefined ||
+    sanitized === null ||
+    (typeof sanitized === "string" && sanitized.trim().length === 0)
+  ) {
+    return false;
+  }
+  
+  // Check for common placeholder strings
+  const strValue = String(sanitized).trim().toLowerCase();
+  const placeholders = [
+    "not specified",
+    "not reported",
+    "not listed",
+    "not provided",
+    "not applicable",
+    "not registered",
+    "n/a",
+    "na",
+    "none",
+    "—",
+    "-",
+    "unknown"
+  ];
+  
+  return !placeholders.includes(strValue);
 }
 
 function renderBulletList(items = [], emptyMessage = "No items.") {
@@ -406,43 +599,84 @@ function renderBadge(label, tone = "info") {
   return `<span class="${classes}">${escapeHtml(label)}</span>`;
 }
 
-function renderScoreMeter(value, max, compact = false) {
+function renderScoreMeter(value, max, compact = false, showPercentage = false) {
   const parsedValue = typeof value === "number" ? value : parseFloat(value);
   if (Number.isNaN(parsedValue)) {
     return `<span class="badge warning">N/A</span>`;
   }
   const ratio = Math.max(0, Math.min(parsedValue / max, 1));
-  const display = compact ? "" : `<span>${escapeHtml(String(value))}/${escapeHtml(String(max))}</span>`;
-  return `<span class="score-meter">${display}<span class="score-meter-fill" style="transform: scaleX(${ratio});"></span></span>`;
+  
+  // Color code the meter based on score quality
+  let colorClass = "";
+  if (max === 5) {
+    // /5 scale coloring
+    if (parsedValue >= 4) colorClass = "score-high";
+    else if (parsedValue >= 3) colorClass = "score-medium";
+    else colorClass = "score-low";
+  } else if (max === 100) {
+    // Percentage scale coloring
+    if (parsedValue >= 80) colorClass = "score-high";
+    else if (parsedValue >= 60) colorClass = "score-medium";
+    else colorClass = "score-low";
+  }
+  
+  // Display format: show percentage for /100 scores, fraction for /5 scores
+  let display = "";
+  if (!compact) {
+    if (showPercentage || max === 100) {
+      display = `<span class="score-value">${Math.round(parsedValue)}%</span>`;
+    } else {
+      display = `<span class="score-value">${escapeHtml(String(value))}/${escapeHtml(String(max))}</span>`;
+    }
+  }
+  
+  return `<span class="score-meter ${colorClass}">${display}<span class="score-meter-bar"><span class="score-meter-fill" style="transform: scaleX(${ratio});"></span></span></span>`;
 }
 
 // Formatting utilities
 
 function formatSampleSize(sample) {
   if (!sample) {
-    return "Not specified";
+    return null; // Return null to trigger filtering
   }
   
   const total = sanitizePlaceholder(sample.total);
   const intervention = sanitizePlaceholder(sample.intervention);
   const control = sanitizePlaceholder(sample.control);
   
+  // Only format if we have at least one real value
+  if (!total && !intervention && !control) {
+    return null;
+  }
+  
+  const parts = [];
+  
   if (total) {
-    return `Total ${formatNumber(total)} (Intervention ${formatNumber(
-      intervention
-    )}, Control ${formatNumber(control)})`;
+    parts.push(`Total ${formatNumber(total)}`);
   }
   
-  if (intervention || control) {
-    return `Intervention ${formatNumber(intervention)}, Control ${formatNumber(control)}`;
+  const groupParts = [];
+  if (intervention) {
+    groupParts.push(`Intervention ${formatNumber(intervention)}`);
+  }
+  if (control) {
+    groupParts.push(`Control ${formatNumber(control)}`);
   }
   
-  return "Not specified";
+  if (groupParts.length > 0) {
+    if (parts.length > 0) {
+      parts[0] += ` (${groupParts.join(", ")})`;
+    } else {
+      parts.push(groupParts.join(", "));
+    }
+  }
+  
+  return parts.join(", ") || null;
 }
 
 function summarizeDemographics(demo) {
   if (!demo) {
-    return "Not specified";
+    return null;
   }
 
   const parts = [];
@@ -450,10 +684,18 @@ function summarizeDemographics(demo) {
   const gender = sanitizePlaceholder(demo.gender);
   const ethnicity = sanitizePlaceholder(demo.ethnicity);
   
-  if (age) parts.push(`Age: ${age}`);
-  if (gender) parts.push(`Gender: ${gender}`);
-  if (ethnicity) parts.push(`Ethnicity: ${ethnicity}`);
-  return parts.length ? parts.join(" • ") : "Not specified";
+  // Check for "not applicable" type values and skip them
+  const notApplicableCheck = (val) => {
+    if (!val) return false;
+    const str = String(val).toLowerCase();
+    return !str.includes("not applicable") && !str.includes("n/a");
+  };
+  
+  if (age && notApplicableCheck(age)) parts.push(`Age: ${age}`);
+  if (gender && notApplicableCheck(gender)) parts.push(`Gender: ${gender}`);
+  if (ethnicity && notApplicableCheck(ethnicity)) parts.push(`Ethnicity: ${ethnicity}`);
+  
+  return parts.length ? parts.join(" • ") : null;
 }
 
 function normalizeStatistic(value) {

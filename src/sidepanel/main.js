@@ -332,6 +332,8 @@ function summaryToMarkdown(data) {
 
   const lines = [
     "# Study Summary",
+    data.studyType ? `- **Study Type:** ${data.studyType}` : null,
+    data.framework ? `- **Framework:** ${data.framework}` : null,
     `- **Design:** ${data.studyDesign?.type || "Unknown"}`,
     `- **Setting:** ${data.studyDesign?.setting || "Unknown"}`,
     `- **Period:** ${data.studyDesign?.studyPeriod || "Unknown"}`,
@@ -339,7 +341,7 @@ function summaryToMarkdown(data) {
     `- **Intervention:** ${data.intervention?.description || "Not detailed"}`,
     `- **Comparator:** ${data.comparison?.description || "Not detailed"}`,
     `- **Primary Outcome:** ${data.outcomes?.primary?.measure || "Not specified"}`
-  ];
+  ].filter(Boolean);
 
   if (Array.isArray(data.outcomes?.secondary) && data.outcomes.secondary.length) {
     lines.push("## Secondary Outcomes");
