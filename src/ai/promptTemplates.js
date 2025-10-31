@@ -398,6 +398,11 @@ ${fullPaperContext}
 
 Return ONLY JSON with this exact structure:
 {
+  "contentValidation": {
+    "isMethodology": true,
+    "confidence": 85,
+    "rationale": "Text contains methodology indicators: study design, sample size, statistical methods"
+  },
   "researchQuestionClarity": {
     "score": 3,
     "strengths": ["specific strength description"],
@@ -432,7 +437,13 @@ Return ONLY JSON with this exact structure:
 }
 
 CRITICAL INSTRUCTIONS:
-- Use actual scores (1-5) based on the methods text
+- FIRST: Validate if the METHODS SECTION text is actually methodology content
+- Set contentValidation.isMethodology to false if the text is from Introduction, Results, Discussion, or Conclusion sections
+- Set contentValidation.confidence (0-100) based on presence of methodology indicators (study design, randomization, sample size, statistical methods, data collection)
+- If isMethodology is false, set all scores to 1, use empty arrays, and set overallQualityScore to 0
+- If confidence is below 60, note this uncertainty in the rationale
+
+- Use actual scores (1-5) based on the methods text ONLY if isMethodology is true
 - For reviews/observational studies: set calculated and actual to null, use "Not applicable" in assessment
 - For RCTs: only include sample size numbers if explicitly mentioned in the methods
 - Randomization: use "Not applicable" for non-randomized designs
@@ -440,6 +451,7 @@ CRITICAL INSTRUCTIONS:
 - Never fabricate numbers - if not mentioned, use null or "Not reported"
 - Use empty arrays [] for missing strengths/concerns/limitations
 - Base ALL content on the actual methods text provided
+- DO NOT guess or infer methodology details that are not explicitly present
 
 ONLY JSON, no comments.
 `.trim();

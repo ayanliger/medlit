@@ -124,6 +124,50 @@ export function renderMethodology(target, result) {
     return;
   }
 
+  // Check for validation rejection
+  const validation = result.validation || result.data.contentValidation;
+  const isRejected = result.source === "validation-rejected" || 
+                     (validation && !validation.isMethodology && validation.confidence < 40);
+
+  // If content was rejected, show a warning banner
+  if (isRejected) {
+    const html = [
+      renderResultMeta(result),
+      renderInfoBanner(
+        `⚠️ The selected text does not appear to be a methodology section. Please select text from the Methods/Methodology section of the paper.`,
+        "warning"
+      ),
+      `<div class="result-card">
+        <h3>Validation Details</h3>
+        ${renderDefinitionList([
+          ["Content Type", "Non-methodology content detected"],
+          ["Confidence", `${validation?.confidence || 0}% (threshold: 40%)`],
+          ["Reason", validation?.reason || validation?.rationale || "Content validation failed"]
+        ])}
+      </div>`,
+      `<div class="result-card">
+        <h3>Tips for Selection</h3>
+        <ul>
+          <li>Look for sections titled "Methods", "Methodology", "Materials and Methods", or "Study Design"</li>
+          <li>Methodology sections typically describe study design, sample size, randomization, data collection, and statistical analysis</li>
+          <li>Avoid selecting from Introduction, Results, Discussion, or Conclusion sections</li>
+        </ul>
+      </div>`
+    ].join("");
+    
+    target.classList.remove("empty-state");
+    target.innerHTML = html;
+    return;
+  }
+
+  // Show validation confidence if available (but not rejected)
+  const validationBanner = validation && validation.confidence < 70 
+    ? renderInfoBanner(
+        `⚠️ Confidence: ${validation.confidence}%. The text may not be entirely from a methodology section.`,
+        "warning"
+      )
+    : "";
+
   const cards = [
     renderScoreCard("Research Question Clarity", result.data.researchQuestionClarity),
     renderScoreCard("Sample Size & Power", result.data.sampleSizePower),
@@ -134,6 +178,7 @@ export function renderMethodology(target, result) {
 
   const html = [
     renderResultMeta(result),
+    validationBanner,
     `<div class="result-card">
       <h3>Overall Quality</h3>
       ${renderScoreMeter(result.data.overallQualityScore, 100, false, true)}

@@ -18,6 +18,7 @@ import {
   createFallbackTranslation,
   createFallbackKeyPoints
 } from "./fallbacks.js";
+import { validateMethodologyText } from "./validators.js";
 import { MODEL_UNAVAILABLE_MESSAGE } from "../shared/constants.js";
 
 /**
@@ -121,6 +122,59 @@ export async function generateStructuredSummary(documentSnapshot) {
  * @returns {Promise<Object>} Methodology assessment with quality scores
  */
 export async function evaluateMethodology({ methodsText, fullText }) {
+  // Pre-validate the methodology text
+  const validation = validateMethodologyText(methodsText);
+  
+  // If validation fails with low confidence, return early with validation error
+  if (!validation.isValid) {
+    return {
+      source: "validation-rejected",
+      generatedAt: new Date().toISOString(),
+      validation,
+      data: {
+        contentValidation: {
+          isMethodology: false,
+          confidence: validation.confidence,
+          rationale: validation.reason
+        },
+        researchQuestionClarity: {
+          score: 0,
+          strengths: [],
+          concerns: ["Unable to assess: text does not appear to be a methodology section."]
+        },
+        sampleSizePower: {
+          score: 0,
+          calculated: null,
+          actual: null,
+          assessment: "Not assessed - invalid methodology content."
+        },
+        randomization: {
+          score: 0,
+          method: "Not assessed",
+          concerns: []
+        },
+        blinding: {
+          participants: false,
+          assessors: false,
+          analysts: false,
+          concerns: ["Not assessed - invalid methodology content."]
+        },
+        statisticalApproach: {
+          score: 0,
+          methods: [],
+          strengths: [],
+          concerns: ["Not assessed - invalid methodology content."]
+        },
+        overallQualityScore: 0,
+        keyLimitations: [
+          "The selected text does not appear to be a methodology section.",
+          "Please select text from the Methods/Methodology section of the paper."
+        ],
+        recommendation: validation.reason
+      }
+    };
+  }
+
   const fallback = createFallbackMethodology(methodsText, MODEL_UNAVAILABLE_MESSAGE);
 
   const session = await createLanguageModelSession({
@@ -144,9 +198,26 @@ export async function evaluateMethodology({ methodsText, fullText }) {
       throw new Error("Language model returned invalid JSON.");
     }
 
+    // Double-check AI's own validation
+    const aiValidation = parsed.contentValidation;
+    if (aiValidation && !aiValidation.isMethodology) {
+      return {
+        source: "chrome-ai-language-model",
+        generatedAt: new Date().toISOString(),
+        validation: {
+          isValid: false,
+          confidence: aiValidation.confidence,
+          reason: aiValidation.rationale
+        },
+        data: parsed
+      };
+    }
+
+    // Include our pre-validation in the response
     return {
       source: "chrome-ai-language-model",
       generatedAt: new Date().toISOString(),
+      validation,
       data: parsed
     };
   } catch (error) {
