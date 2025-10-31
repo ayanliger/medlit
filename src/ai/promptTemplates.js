@@ -399,39 +399,39 @@ ${fullPaperContext}
 Return ONLY JSON with this exact structure:
 {
   "contentValidation": {
-    "isMethodology": true,
-    "confidence": 85,
-    "rationale": "Text contains methodology indicators: study design, sample size, statistical methods"
+    "isMethodology": boolean (true if text is methodology, false otherwise),
+    "confidence": number 0-100 (confidence this is methodology content),
+    "rationale": "explanation of validation decision"
   },
   "researchQuestionClarity": {
-    "score": 3,
-    "strengths": ["specific strength description"],
-    "concerns": ["specific concern description"]
+    "score": number 1-5 (based on actual text quality),
+    "strengths": ["specific strength"],
+    "concerns": ["specific concern"]
   },
   "sampleSizePower": {
-    "score": 4,
-    "calculated": null,
-    "actual": null,
-    "assessment": "sample size justification or 'Not applicable for review/observational study'"
+    "score": number 1-5 (based on actual text quality),
+    "calculated": number or null,
+    "actual": number or null,
+    "assessment": "assessment text or 'Not applicable'"
   },
   "randomization": {
-    "score": 4,
-    "method": "randomization method description",
-    "concerns": ["specific randomization concern"]
+    "score": number 1-5 (based on actual text quality),
+    "method": "randomization method description or 'Not applicable'",
+    "concerns": ["concern if any"]
   },
   "blinding": {
-    "participants": true,
-    "assessors": true,
-    "analysts": false,
-    "concerns": ["specific blinding concern"]
+    "participants": boolean,
+    "assessors": boolean,
+    "analysts": boolean,
+    "concerns": ["concern if any"]
   },
   "statisticalApproach": {
-    "score": 4,
-    "methods": ["statistical method 1", "method 2"],
-    "strengths": ["strength description"],
-    "concerns": ["concern description"]
+    "score": number 1-5 (based on actual text quality),
+    "methods": ["method 1", "method 2"],
+    "strengths": ["strength"],
+    "concerns": ["concern"]
   },
-  "overallQualityScore": 75,
+  "overallQualityScore": number 0-100 (weighted average based on all scores),
   "keyLimitations": ["limitation 1", "limitation 2"],
   "recommendation": "quality recommendation"
 }
@@ -443,15 +443,29 @@ CRITICAL INSTRUCTIONS:
 - If isMethodology is false, set all scores to 1, use empty arrays, and set overallQualityScore to 0
 - If confidence is below 60, note this uncertainty in the rationale
 
-- Use actual scores (1-5) based on the methods text ONLY if isMethodology is true
+SCORING RUBRIC (1-5 scale):
+- Score 5: Excellent - comprehensive, well-justified, transparent, follows best practices
+- Score 4: Good - adequately described, minor gaps, generally sound
+- Score 3: Adequate - basic description present, some concerns or missing details
+- Score 2: Poor - minimal description, significant gaps, major concerns
+- Score 1: Very Poor - not described, critically inadequate, or not applicable
+
+APPLY THESE SCORES STRICTLY:
+- Research Question: Score based on clarity, specificity, and whether hypothesis/aims are explicit
+- Sample Size: Score based on whether power calculation mentioned and sample size justified
+- Randomization: Score based on whether method is described (if applicable to study type)
+- Statistical Approach: Score based on whether methods are appropriate, specified, and justified
+- Overall Quality Score: Calculate as weighted percentage (not arbitrary 75%)
+
 - For reviews/observational studies: set calculated and actual to null, use "Not applicable" in assessment
 - For RCTs: only include sample size numbers if explicitly mentioned in the methods
-- Randomization: use "Not applicable" for non-randomized designs
+- Randomization: use "Not applicable" for non-randomized designs, score as 1
 - Blinding: set all to false for reviews or unblinded studies
 - Never fabricate numbers - if not mentioned, use null or "Not reported"
 - Use empty arrays [] for missing strengths/concerns/limitations
 - Base ALL content on the actual methods text provided
 - DO NOT guess or infer methodology details that are not explicitly present
+- DO NOT default to score 4 - use the full 1-5 range based on actual quality
 
 ONLY JSON, no comments.
 `.trim();

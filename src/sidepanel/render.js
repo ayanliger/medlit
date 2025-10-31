@@ -126,8 +126,9 @@ export function renderMethodology(target, result) {
 
   // Check for validation rejection
   const validation = result.validation || result.data.contentValidation;
+  const threshold = validation?.threshold || 50; // Default to 50 if not provided
   const isRejected = result.source === "validation-rejected" || 
-                     (validation && !validation.isMethodology && validation.confidence < 40);
+                     (validation && !validation.isMethodology && validation.confidence < threshold);
 
   // If content was rejected, show a warning banner
   if (isRejected) {
@@ -141,7 +142,7 @@ export function renderMethodology(target, result) {
         <h3>Validation Details</h3>
         ${renderDefinitionList([
           ["Content Type", "Non-methodology content detected"],
-          ["Confidence", `${validation?.confidence || 0}% (threshold: 40%)`],
+          ["Confidence", `${validation?.confidence || 0}% (threshold: ${threshold}%)`],
           ["Reason", validation?.reason || validation?.rationale || "Content validation failed"]
         ])}
       </div>`,

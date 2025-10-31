@@ -213,6 +213,51 @@ export async function evaluateMethodology({ methodsText, fullText }) {
       };
     }
 
+    // Apply confidence-based score adjustment for low-confidence assessments
+    const effectiveConfidence = Math.max(validation.confidence, aiValidation?.confidence || 0);
+    
+    if (effectiveConfidence < 80) {
+      // Aggressive scaling for low-confidence assessments
+      // Confidence <50: cap at 30% of original score (essentially reject)
+      // Confidence 50-60: cap at 50% of original score
+      // Confidence 60-70: cap at 65% of original score  
+      // Confidence 70-80: cap at 80% of original score
+      const scaleFactor = effectiveConfidence < 50 ? 0.3 : 
+                         effectiveConfidence < 60 ? 0.5 :
+                         effectiveConfidence < 70 ? 0.65 : 0.8;
+      
+      // Adjust individual scores
+      if (parsed.researchQuestionClarity?.score) {
+        parsed.researchQuestionClarity.score = Math.round(parsed.researchQuestionClarity.score * scaleFactor);
+        if (parsed.researchQuestionClarity.score < 1) parsed.researchQuestionClarity.score = 1;
+      }
+      if (parsed.sampleSizePower?.score) {
+        parsed.sampleSizePower.score = Math.round(parsed.sampleSizePower.score * scaleFactor);
+        if (parsed.sampleSizePower.score < 1) parsed.sampleSizePower.score = 1;
+      }
+      if (parsed.randomization?.score) {
+        parsed.randomization.score = Math.round(parsed.randomization.score * scaleFactor);
+        if (parsed.randomization.score < 1) parsed.randomization.score = 1;
+      }
+      if (parsed.statisticalApproach?.score) {
+        parsed.statisticalApproach.score = Math.round(parsed.statisticalApproach.score * scaleFactor);
+        if (parsed.statisticalApproach.score < 1) parsed.statisticalApproach.score = 1;
+      }
+      
+      // Adjust overall quality score
+      if (parsed.overallQualityScore) {
+        parsed.overallQualityScore = Math.round(parsed.overallQualityScore * scaleFactor);
+      }
+      
+      // Add limitation about low confidence
+      if (!parsed.keyLimitations) {
+        parsed.keyLimitations = [];
+      }
+      parsed.keyLimitations.unshift(
+        `Assessment confidence is ${effectiveConfidence}%. The selected text may not be entirely from a methodology section, which affects score reliability.`
+      );
+    }
+
     // Include our pre-validation in the response
     return {
       source: "chrome-ai-language-model",

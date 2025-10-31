@@ -107,11 +107,13 @@ export function validateMethodologyText(text) {
   // Round to integer
   confidence = Math.round(Math.max(0, Math.min(100, confidence)));
 
-  const isValid = confidence >= 40; // Threshold for acceptance
+  const CONFIDENCE_THRESHOLD = 50; // Threshold for acceptance
+  const isValid = confidence >= CONFIDENCE_THRESHOLD;
   
   return {
     isValid,
     confidence,
+    threshold: CONFIDENCE_THRESHOLD,
     reason: isValid 
       ? `Text appears to contain methodology content (${totalMatches} methodology indicators found across ${categoriesWithMatches} categories).`
       : antiPatternMatches > 0
