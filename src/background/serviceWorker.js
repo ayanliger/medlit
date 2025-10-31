@@ -124,7 +124,7 @@ async function setupContextMenus() {
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.simplify,
-    title: "MedLit: Simplify Medical Jargon",
+    title: "MedLit: Simplify Language",
     contexts: ["selection"]
   });
 
