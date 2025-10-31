@@ -117,6 +117,12 @@ async function setupContextMenus() {
   });
 
   chrome.contextMenus.create({
+    id: CONTEXT_MENUS.summarize,
+    title: "MedLit: Generate Summary from Selection",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
     id: CONTEXT_MENUS.methodology,
     title: "MedLit: Scan Methodology",
     contexts: ["selection"]
@@ -141,6 +147,11 @@ function buildContextMenuMessage(info) {
   }
 
   switch (info.menuItemId) {
+    case CONTEXT_MENUS.summarize:
+      return {
+        type: MESSAGE_TYPES.CONTEXT_SUMMARIZE,
+        payload: { text: info.selectionText }
+      };
     case CONTEXT_MENUS.methodology:
       return {
         type: MESSAGE_TYPES.CONTEXT_METHODOLOGY,

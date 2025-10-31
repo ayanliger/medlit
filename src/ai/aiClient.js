@@ -534,8 +534,65 @@ export async function detectStudyType(documentSnapshot) {
     }
     
     // Normalize study type and framework to handle variations
+    const originalStudyType = parsed.studyType;
+    const originalFramework = parsed.framework;
     let studyType = normalizeStudyType(parsed.studyType);
     let framework = normalizeFramework(parsed.framework);
+    
+    // BULLETPROOF SAFETY CHECK: Multiple detection methods
+    const title = (documentSnapshot?.meta?.title || '').toLowerCase();
+    const reasonsText = Array.isArray(parsed.reasons) ? parsed.reasons.join(' ').toLowerCase() : '';
+    
+    console.log('🔍 MedLit Safety Check:', {
+      title: title.substring(0, 100),
+      classifiedAs: studyType,
+      hasTitle: !!title,
+      isMisclassifiedAsReview: (studyType === "Systematic Review" || studyType === "Meta-Analysis")
+    });
+    
+    // Check if misclassified as review
+    if (studyType === "Systematic Review" || studyType === "Meta-Analysis") {
+      // Method 1: Check title for RCT keywords
+      const rctTitleKeywords = ['randomized', 'randomised', 'trial', ' rct ', 'phase 2', 'phase 3', 'phase ii', 'phase iii', 'phase 1', 'phase i'];
+      const titleHasRCT = rctTitleKeywords.some(kw => title.includes(kw));
+      
+      // Method 2: Check if AI's own reasoning contradicts classification
+      const reasonsMentionRCT = reasonsText.includes('rct') || 
+                                reasonsText.includes('randomized controlled trial') ||
+                                reasonsText.includes('indicating an rct') ||
+                                reasonsText.includes('confirms it is an rct') ||
+                                reasonsText.includes('trial registry');
+      
+      // Method 3: Check for trial registry ID
+      const hasTrialRegistry = reasonsText.includes('nct') || reasonsText.includes('isrctn');
+      
+      console.warn('🚨 Potential misclassification detected:', {
+        titleHasRCT,
+        reasonsMentionRCT,
+        hasTrialRegistry,
+        willOverride: (titleHasRCT || (reasonsMentionRCT && hasTrialRegistry))
+      });
+      
+      // Override if: (1) title clearly states RCT, OR (2) AI mentions RCT+registry
+      if (titleHasRCT || (reasonsMentionRCT && hasTrialRegistry)) {
+        console.warn(`\n⚠️⚠️⚠️ OVERRIDING MISCLASSIFICATION ⚠️⚠️⚠️`);
+        console.warn(`   FROM: ${studyType}`);
+        console.warn(`   TO: RCT`);
+        console.warn(`   REASON: ${titleHasRCT ? 'Title contains RCT keywords' : 'AI reasoning mentions RCT+registry'}`);
+        console.warn(`   Title: "${documentSnapshot?.meta?.title || 'N/A'}"\n`);
+        
+        studyType = "RCT";
+        framework = "CONSORT";
+      }
+    }
+    
+    // Log classification for debugging
+    console.log('MedLit Classification:', {
+      original: { studyType: originalStudyType, framework: originalFramework },
+      normalized: { studyType, framework },
+      confidence: parsed.confidence,
+      reasons: Array.isArray(parsed.reasons) ? parsed.reasons : []
+    });
     
     // Fallback heuristic: if classifier returned "Other"/"None" but reasons contain clear keywords, override
     if (studyType === "Other" || framework === "None") {
@@ -584,30 +641,48 @@ function normalizeStudyType(value) {
   if (!value || typeof value !== 'string') return "Other";
   const normalized = value.trim().toLowerCase();
   
+  // Return as-is if it matches canonical values exactly (check first to avoid false positives)
+  const canonical = ["RCT", "Cohort", "Case-Control", "Cross-Sectional", "Systematic Review", 
+                     "Meta-Analysis", "Diagnostic Accuracy", "Case Report", "Case Series", 
+                     "Qualitative", "Basic Science", "Other"];
+  if (canonical.includes(value.trim())) return value.trim();
+  
   // Map common variations to canonical values
+  // IMPORTANT: Check more specific patterns before generic ones to avoid false positives
+  
+  // Primary study types (check these FIRST before review types)
   if (normalized.includes('rct') || normalized.includes('randomized controlled') || 
-      normalized.includes('clinical trial') || normalized.includes('randomised')) {
+      normalized.includes('randomised controlled')) {
     return "RCT";
   }
-  if (normalized.includes('cohort')) return "Cohort";
+  if (normalized.includes('diagnostic accuracy') || normalized.includes('diagnostic test')) return "Diagnostic Accuracy";
   if (normalized.includes('case-control') || normalized.includes('case control')) return "Case-Control";
   if (normalized.includes('cross-sectional') || normalized.includes('cross sectional')) return "Cross-Sectional";
-  if (normalized.includes('systematic review')) return "Systematic Review";
-  if (normalized.includes('meta-analysis') || normalized.includes('metaanalysis')) return "Meta-Analysis";
-  if (normalized.includes('diagnostic accuracy') || normalized.includes('diagnostic test')) return "Diagnostic Accuracy";
-  if (normalized.includes('case report')) return "Case Report";
+  if (normalized.includes('cohort study') || (normalized.includes('cohort') && !normalized.includes('not a cohort'))) return "Cohort";
   if (normalized.includes('case series')) return "Case Series";
+  if (normalized.includes('case report')) return "Case Report";
   if (normalized.includes('qualitative')) return "Qualitative";
   if (normalized.includes('basic science') || normalized.includes('bench') || 
       normalized.includes('in vitro') || normalized.includes('in vivo')) {
     return "Basic Science";
   }
   
-  // Return as-is if it matches canonical values exactly
-  const canonical = ["RCT", "Cohort", "Case-Control", "Cross-Sectional", "Systematic Review", 
-                     "Meta-Analysis", "Diagnostic Accuracy", "Case Report", "Case Series", 
-                     "Qualitative", "Basic Science", "Other"];
-  if (canonical.includes(value.trim())) return value.trim();
+  // Secondary literature (check LAST to avoid overriding primary studies)
+  // Be MORE strict: require clear affirmative language
+  if ((normalized.includes('is a systematic review') || normalized.includes('systematic review of')) && 
+      !normalized.includes('not a systematic review') && !normalized.includes('not systematic review')) {
+    return "Systematic Review";
+  }
+  if ((normalized.includes('is a meta-analysis') || normalized.includes('meta-analysis of') || 
+       normalized.includes('metaanalysis')) && 
+      !normalized.includes('not a meta-analysis') && !normalized.includes('no meta-analysis')) {
+    return "Meta-Analysis";
+  }
+  
+  // Fallback for clinical trials mentioned without RCT keyword
+  if (normalized.includes('clinical trial') || normalized.includes('randomised') || normalized.includes('randomized')) {
+    return "RCT";
+  }
   
   return "Other";
 }
@@ -657,34 +732,69 @@ function inferFromReasons(reasonsText) {
   
   if (!reasonsText) return result;
   
-  // Check for study type keywords in reasons
+  // CRITICAL: Check in order of specificity to avoid false positives
+  // Primary research studies FIRST (these are most common and should take precedence)
+  
+  // RCT indicators (check first - most specific)
   if (reasonsText.includes('randomized') || reasonsText.includes('randomised') || 
-      reasonsText.includes('rct') || reasonsText.includes('clinical trial') || 
-      reasonsText.includes('phase 2') || reasonsText.includes('phase 3') || 
-      reasonsText.includes('phase ii') || reasonsText.includes('phase iii')) {
+      reasonsText.includes('rct') || reasonsText.includes('phase 2') || reasonsText.includes('phase 3') || 
+      reasonsText.includes('phase ii') || reasonsText.includes('phase iii') ||
+      reasonsText.includes('randomized controlled') || reasonsText.includes('randomised controlled')) {
     result.studyType = "RCT";
-  } else if (reasonsText.includes('systematic review')) {
-    result.studyType = "Systematic Review";
-  } else if (reasonsText.includes('meta-analysis') || reasonsText.includes('metaanalysis')) {
-    result.studyType = "Meta-Analysis";
-  } else if (reasonsText.includes('cohort study') || reasonsText.includes('cohort design')) {
+  } 
+  // Observational study types
+  else if (reasonsText.includes('cohort study') || reasonsText.includes('cohort design') ||
+           (reasonsText.includes('cohort') && reasonsText.includes('prospective'))) {
     result.studyType = "Cohort";
-  } else if (reasonsText.includes('case-control') || reasonsText.includes('case control')) {
+  } 
+  else if (reasonsText.includes('case-control') || reasonsText.includes('case control')) {
     result.studyType = "Case-Control";
-  } else if (reasonsText.includes('cross-sectional') || reasonsText.includes('cross sectional')) {
+  } 
+  else if (reasonsText.includes('cross-sectional') || reasonsText.includes('cross sectional')) {
     result.studyType = "Cross-Sectional";
-  } else if (reasonsText.includes('diagnostic accuracy') || 
-             (reasonsText.includes('sensitivity') && reasonsText.includes('specificity'))) {
+  } 
+  // Diagnostic studies
+  else if (reasonsText.includes('diagnostic accuracy') || reasonsText.includes('diagnostic test') ||
+           (reasonsText.includes('sensitivity') && reasonsText.includes('specificity') && 
+            reasonsText.includes('diagnostic'))) {
     result.studyType = "Diagnostic Accuracy";
-  } else if (reasonsText.includes('case report')) {
-    result.studyType = "Case Report";
-  } else if (reasonsText.includes('case series')) {
+  } 
+  // Case studies
+  else if (reasonsText.includes('case series')) {
     result.studyType = "Case Series";
-  } else if (reasonsText.includes('qualitative')) {
+  } 
+  else if (reasonsText.includes('case report')) {
+    result.studyType = "Case Report";
+  } 
+  // Qualitative
+  else if (reasonsText.includes('qualitative') || reasonsText.includes('interviews') ||
+           reasonsText.includes('focus groups') || reasonsText.includes('thematic analysis')) {
     result.studyType = "Qualitative";
-  } else if (reasonsText.includes('in vitro') || reasonsText.includes('in vivo') || 
-             reasonsText.includes('animal model') || reasonsText.includes('bench')) {
+  } 
+  // Basic science
+  else if (reasonsText.includes('in vitro') || reasonsText.includes('in vivo') || 
+           reasonsText.includes('animal model') || reasonsText.includes('bench')) {
     result.studyType = "Basic Science";
+  }
+  // ONLY check for secondary literature if NO primary study indicators found
+  // AND require strong affirmative language
+  else if ((reasonsText.includes('is a systematic review') || 
+            reasonsText.includes('systematic review of') ||
+            reasonsText.includes('systematically reviewed')) &&
+           !reasonsText.includes('not a systematic review') &&
+           !reasonsText.includes('not systematic')) {
+    result.studyType = "Systematic Review";
+  } 
+  else if ((reasonsText.includes('is a meta-analysis') || 
+            reasonsText.includes('meta-analysis of') ||
+            reasonsText.includes('pooled analysis')) &&
+           !reasonsText.includes('not a meta-analysis') &&
+           !reasonsText.includes('no meta-analysis')) {
+    result.studyType = "Meta-Analysis";
+  }
+  // Fallback for clinical trial mentions
+  else if (reasonsText.includes('clinical trial')) {
+    result.studyType = "RCT";
   }
   
   // Check for framework keywords in reasons

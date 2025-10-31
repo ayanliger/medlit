@@ -15,15 +15,24 @@ ${context}
 
 Respond ONLY with valid JSON using EXACT values from the enums below:
 {
-  "studyType": "RCT",
-  "framework": "CONSORT",
-  "confidence": 0.95,
+  "studyType": "[value from enum]",
+  "framework": "[value from enum]",
+  "confidence": [0.0 to 1.0 based on evidence],
   "reasons": ["evidence-based reason 1", "evidence-based reason 2"]
 }
 
 IMPORTANT: Both studyType AND framework MUST be filled with enum values from these lists:
 - studyType: RCT, Cohort, Case-Control, Cross-Sectional, Systematic Review, Meta-Analysis, Diagnostic Accuracy, Case Report, Case Series, Qualitative, Basic Science, Other
 - framework: CONSORT, STROBE, PRISMA, STARD, CARE, COREQ, PICO, None
+
+⚠️ ANTI-HALLUCINATION RULES:
+1. Check the TITLE and ABSTRACT first - they explicitly state the study type
+2. If the title contains "randomized", "trial", "RCT", "phase 2", or "phase 3" → it is an RCT, NOT a review
+3. Look for "Patients were randomized" or "participants were randomized" → RCT
+4. Look for trial registry IDs (NCT, ISRCTN, etc.) → indicates RCT
+5. ONLY classify as "Systematic Review" if the Methods describe searching multiple databases for existing studies
+6. ONLY classify as "Meta-Analysis" if the paper pools data from OTHER studies
+7. If you see BOTH "randomized trial" AND "systematic review" mentioned, prioritize what the paper IS (primary research) not what it CITES
 
 CRITICAL: Use EXACT enum values. Examples:
 - "randomized controlled trial" or "phase 3 trial" → studyType = "RCT", framework = "CONSORT"
@@ -35,17 +44,46 @@ CRITICAL: Use EXACT enum values. Examples:
 - "qualitative study" → studyType = "Qualitative", framework = "COREQ"
 - "in vitro" or "animal model" → studyType = "Basic Science", framework = "None"
 
-Mapping rules:
+Mapping rules (prioritize primary research over secondary literature):
 1. Interventional/RCT/clinical trial → studyType="RCT", framework="CONSORT"
 2. Cohort/case-control/cross-sectional → studyType="Cohort|Case-Control|Cross-Sectional", framework="STROBE"
-3. Systematic review/meta-analysis → studyType="Systematic Review|Meta-Analysis", framework="PRISMA"
-4. Diagnostic test evaluation → studyType="Diagnostic Accuracy", framework="STARD"
-5. Single or few patient cases → studyType="Case Report|Case Series", framework="CARE"
-6. Interviews/focus groups/themes → studyType="Qualitative", framework="COREQ"
-7. Bench/lab/molecular → studyType="Basic Science", framework="None"
+3. Diagnostic test evaluation → studyType="Diagnostic Accuracy", framework="STARD"
+4. Single or few patient cases → studyType="Case Report|Case Series", framework="CARE"
+5. Interviews/focus groups/themes → studyType="Qualitative", framework="COREQ"
+6. Bench/lab/molecular → studyType="Basic Science", framework="None"
+7. Systematic review/meta-analysis (ONLY if the paper reviews/synthesizes OTHER studies) → studyType="Systematic Review|Meta-Analysis", framework="PRISMA"
 8. If none fit → studyType="Other", framework="None"
 
-Base classification on keywords: "randomized", "blinded", "placebo", "cohort", "prospective", "retrospective", "systematic review", "meta-analysis", "sensitivity", "specificity", "case report", "qualitative", "in vitro", "animal".
+CRITICAL CLASSIFICATION GUIDANCE:
+- A study is a "Systematic Review" ONLY if it systematically searches, selects, and synthesizes MULTIPLE existing studies
+- A study is "Meta-Analysis" ONLY if it statistically pools quantitative data from multiple studies
+- If the paper describes original data collection (new patients, experiments, observations), it is NOT a systematic review/meta-analysis
+- Keywords "systematic review" or "meta-analysis" in the Introduction/Background do NOT indicate study type
+
+DECISION TREE (follow in order):
+1. Check title for "randomized", "trial", "RCT", "phase" → RCT
+2. Check for trial registration (NCT, ISRCTN, etc.) → RCT
+3. Check Methods for "patients were randomized" → RCT
+4. Check Methods for "database search" + "study selection" → Systematic Review
+5. Check for "pooled analysis" or "meta-analysis model" → Meta-Analysis
+6. Check for "enrolled", "recruited", "consented" → primary research (RCT/Cohort/etc.)
+7. If none of above, use study design keywords
+
+Base classification primarily on:
+- TITLE and ABSTRACT (most reliable)
+- Study design explicitly stated in Methods
+- Whether NEW data was collected (primary research) vs existing studies reviewed (secondary research)
+- Presence of original patient enrollment, intervention, or data collection
+
+COMMON MISTAKES TO AVOID:
+- DO NOT classify an RCT as a systematic review just because the Introduction mentions prior reviews
+- DO NOT confuse "systematic approach" (methodology) with "systematic review" (study type)
+- DO NOT assume a paper is a review just because it analyzes multiple groups or trials within ONE study
+
+Keyword indicators (use as secondary evidence only):
+- RCT: "randomized", "blinded", "placebo", "enrolled", "recruited", "trial registry"
+- Cohort: "cohort", "prospective", "followed over time"
+- Systematic Review: "database search", "MEDLINE", "EMBASE", "study selection criteria", "included studies"
 `.trim();
 }
 
@@ -73,7 +111,7 @@ REQUIRED JSON SCHEMA:
     "registrationID": "trial registry ID or 'Not registered'"
   },
   "population": {
-    "sampleSize": {"intervention": 123, "control": 120, "total": 243},
+    "sampleSize": {"intervention": number or null, "control": number or null, "total": number or null},
     "demographics": {"age": "mean age or age range", "gender": "gender distribution", "ethnicity": "ethnic breakdown"},
     "inclusionCriteria": ["criterion 1", "criterion 2"],
     "exclusionCriteria": ["criterion 1", "criterion 2"]
@@ -92,7 +130,7 @@ REQUIRED JSON SCHEMA:
       "measure": "primary outcome measure",
       "interventionResult": "result for intervention group",
       "controlResult": "result for control group",
-      "pValue": 0.05,
+      "pValue": number or null,
       "confidenceInterval": "95% CI description",
       "effectSize": "effect size with units"
     },
@@ -104,7 +142,7 @@ REQUIRED JSON SCHEMA:
     ]
   },
   "interpretation": {
-    "NNT": 10,
+    "NNT": number or null,
     "interpretation": "clinical interpretation of findings",
     "limitations": ["limitation 1", "limitation 2"],
     "applicability": "clinical applicability"

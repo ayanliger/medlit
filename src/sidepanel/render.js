@@ -8,6 +8,12 @@
  * @param {Object} result - The summary result object
  */
 export function renderStructuredSummary(target, result) {
+  // Handle error state from fallbacks (AI unavailable)
+  if (result?.error || result?.source === "error") {
+    renderAIUnavailableError(target, result);
+    return;
+  }
+  
   if (!result?.data) {
     renderError(target, "No summary data returned.");
     return;
@@ -119,6 +125,12 @@ export function renderStructuredSummary(target, result) {
  * @param {Object} result - The methodology result object
  */
 export function renderMethodology(target, result) {
+  // Handle error state from fallbacks (AI unavailable)
+  if (result?.error || result?.source === "error") {
+    renderAIUnavailableError(target, result);
+    return;
+  }
+  
   if (!result?.data) {
     renderError(target, "No methodology data returned.");
     return;
@@ -202,6 +214,12 @@ export function renderMethodology(target, result) {
  * @param {Object} result - The simplification result object
  */
 export function renderSimplification(target, result) {
+  // Handle error state from fallbacks (AI unavailable)
+  if (result?.error || result?.source === "error") {
+    renderAIUnavailableError(target, result);
+    return;
+  }
+  
   if (!result?.data) {
     renderError(target, "No simplification data returned.");
     return;
@@ -244,6 +262,12 @@ export function renderSimplification(target, result) {
  * @param {Object} result - The translation result object
  */
 export function renderTranslation(target, result) {
+  // Handle error state from fallbacks (AI unavailable)
+  if (result?.error || result?.source === "error") {
+    renderAIUnavailableError(target, result);
+    return;
+  }
+  
   if (!result?.data) {
     renderError(target, "No translation data returned.");
     return;
@@ -303,6 +327,47 @@ export function renderLoading(target, message) {
 export function renderError(target, message) {
   target.classList.remove("empty-state");
   target.innerHTML = renderInfoBanner(message, "error");
+}
+
+/**
+ * Renders an AI unavailable error with setup instructions
+ * @param {HTMLElement} target - The target element
+ * @param {Object} result - The error result object
+ */
+function renderAIUnavailableError(target, result) {
+  target.classList.remove("empty-state");
+  const userMessage = result?.userMessage || "Chrome Built-in AI is required for MedLit to function.";
+  const technicalMessage = result?.message || "AI model unavailable";
+  
+  target.innerHTML = `
+    <div class="result-card error-state" style="border-left: 4px solid #f59e0b;">
+      <h3>🤖 Chrome Built-in AI Required</h3>
+      <p style="font-size: 1.05em; margin-bottom: 1em;">${escapeHtml(userMessage)}</p>
+      
+      <details style="margin-top: 1em;">
+        <summary style="cursor: pointer; font-weight: 600; margin-bottom: 0.5em;">How to enable Chrome AI</summary>
+        <ol style="margin: 0.5em 0 0 1.5em; line-height: 1.8;">
+          <li>Open <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">chrome://flags/#optimization-guide-on-device-model</code></li>
+          <li>Set "Enables optimization guide on device" to <strong>Enabled BypassPerfRequirement</strong></li>
+          <li>Set "Prompt API for Gemini Nano" to <strong>Enabled</strong></li>
+          <li>Restart Chrome</li>
+          <li>Open DevTools (F12) and run: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">await ai.languageModel.create()</code></li>
+          <li>Wait for the model to download (~1-2 GB)</li>
+        </ol>
+      </details>
+      
+      <details style="margin-top: 0.75em;">
+        <summary style="cursor: pointer; font-weight: 600; margin-bottom: 0.5em;">Technical details</summary>
+        <p style="font-family: monospace; font-size: 0.9em; color: #6b7280; margin: 0.5em 0 0 0;">${escapeHtml(technicalMessage)}</p>
+        <p style="font-size: 0.9em; color: #6b7280; margin: 0.5em 0 0 0;">Source: ${escapeHtml(result?.source || 'unknown')}</p>
+        <p style="font-size: 0.9em; color: #6b7280; margin: 0.5em 0 0 0;">Generated: ${escapeHtml(result?.generatedAt || new Date().toISOString())}</p>
+      </details>
+      
+      <div style="margin-top: 1.5em; padding: 1em; background: #fef3c7; border-radius: 6px;">
+        <p style="margin: 0; font-size: 0.95em;">💡 <strong>Note:</strong> MedLit is designed exclusively for Chrome's built-in AI APIs (Prompt API, Rewriter API, Translator API). This extension showcases on-device AI capabilities without external API dependencies.</p>
+      </div>
+    </div>
+  `;
 }
 
 // Helper rendering functions

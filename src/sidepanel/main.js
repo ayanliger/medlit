@@ -65,6 +65,15 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   switch (message.type) {
+    case MESSAGE_TYPES.CONTEXT_SUMMARIZE: {
+      const text = message.payload?.text;
+      if (!text) {
+        renderError(picoOutputEl, "No text supplied for summary.");
+        return;
+      }
+      void processSummaryFromSelection(text);
+      break;
+    }
     case MESSAGE_TYPES.CONTEXT_METHODOLOGY: {
       const text = message.payload?.text;
       if (!text) {
@@ -97,6 +106,42 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+async function processSummaryFromSelection(text) {
+  if (isBusy("summary")) {
+    return;
+  }
+
+  setBusy("summary", true);
+  renderLoading(picoOutputEl, "Generating summary from selection…");
+  updateStatus("Analyzing selected text with Chrome AI…");
+
+  try {
+    // Create a minimal document snapshot using the selected text
+    const documentSnapshot = {
+      meta: {
+        url: window.location.href || "",
+        title: "" // Title will be extracted from text
+      },
+      article: {
+        textContent: text,
+        htmlContent: ""
+      }
+    };
+    
+    const summary = await generateStructuredSummary(documentSnapshot);
+    appState.summary = summary;
+    renderStructuredSummary(picoOutputEl, summary);
+    exportBtn.disabled = false;
+    updateStatus("Summary from selection ready.");
+  } catch (error) {
+    console.error("MedLit summary from selection error", error);
+    renderError(picoOutputEl, error.message || "Unable to generate summary from selection.");
+    updateStatus("Summary failed");
+  } finally {
+    setBusy("summary", false);
+  }
+}
+
 async function handleGenerateSummary({ forceRefresh }) {
   if (isBusy("summary")) {
     return;
@@ -110,7 +155,26 @@ async function handleGenerateSummary({ forceRefresh }) {
     const documentSnapshot = await getDocumentSnapshot(forceRefresh);
     const summary = await generateStructuredSummary(documentSnapshot);
     appState.summary = summary;
+    
+    // Check if it's a PDF with poor text extraction - show banner AFTER rendering summary
+    const isPDF = documentSnapshot?.meta?.url?.toLowerCase().endsWith('.pdf');
+    const hasMinimalTitle = !documentSnapshot?.meta?.title || 
+                           documentSnapshot.meta.title.toLowerCase().endsWith('.pdf') ||
+                           documentSnapshot.meta.title.length < 20;
+    
     renderStructuredSummary(picoOutputEl, summary);
+    
+    // Show PDF notice for ALL PDFs (text extraction is always limited)
+    if (isPDF) {
+      const pdfBanner = `
+        <div style="margin: 1em 0; padding: 1em; background: #1e293b; border-left: 4px solid #3b82f6; border-radius: 4px; color: #e2e8f0;">
+          <p style="margin: 0 0 0.5em 0; font-weight: 600; color: #93c5fd;">📄 PDF Classification Note</p>
+          <p style="margin: 0; font-size: 0.9em; line-height: 1.5;">Chrome's PDF viewer has limited text extraction capabilities. For the most accurate classification, use the <strong>context menu</strong> after selecting all text (Ctrl+A), or view the paper on the journal's website.</p>
+        </div>
+      `;
+      picoOutputEl.insertAdjacentHTML('afterbegin', pdfBanner);
+    }
+    
     exportBtn.disabled = false;
     updateStatus(summary.source === "fallback" ? "Summary ready (fallback mode)." : "Summary ready.");
   } catch (error) {
@@ -287,6 +351,8 @@ async function handleExport() {
   }
 }
 
+
+
 async function getDocumentSnapshot(forceRefresh) {
   if (!forceRefresh && appState.lastDocument) {
     return appState.lastDocument;
@@ -299,7 +365,6 @@ async function getDocumentSnapshot(forceRefresh) {
   appState.lastDocument = response.document;
   return response.document;
 }
-
 
 // Utility functions
 
