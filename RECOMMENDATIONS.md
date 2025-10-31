@@ -54,7 +54,7 @@ const session = await createLanguageModelSession({
 async function createLanguageModelSession(options, language = "en", onProgress = null) {
   const sessionOptions = {};
   
-  // ... existing config ...
+  // ... existing  config ...
   
   if (onProgress) {
     sessionOptions.monitor = (m) => {
