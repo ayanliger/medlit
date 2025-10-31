@@ -46,7 +46,25 @@
 
       <section class="panel-section">
         <header class="section-header">
-          <h2>Plain Language Simplifier</h2>
+          <h2>Language Simplifier</h2>
+          <div class="section-actions">
+            <label class="control-label">
+              Tone:
+              <select id="simplifierTone" class="control-select">
+                <option value="more-casual" selected>More Casual</option>
+                <option value="as-is">As-Is</option>
+                <option value="more-formal">More Formal</option>
+              </select>
+            </label>
+            <label class="control-label">
+              Length:
+              <select id="simplifierLength" class="control-select">
+                <option value="shorter">Shorter</option>
+                <option value="as-is" selected>As-Is</option>
+                <option value="longer">Longer</option>
+              </select>
+            </label>
+          </div>
         </header>
         <div id="simplifierOutput" class="section-body empty-state">
           <p>Highlight complex medical or technical text, then select "MedLit: Simplify Medical Jargon" from the context menu.</p>

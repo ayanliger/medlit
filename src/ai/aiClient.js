@@ -161,25 +161,31 @@ export async function evaluateMethodology({ methodsText, fullText }) {
 }
 
 /**
- * Simplifies complex medical text into plain English
+ * Simplifies complex medical text for medical professionals and students
  * @param {string} text - The medical text to simplify
+ * @param {Object} [options] - Simplification options
+ * @param {string} [options.tone="more-casual"] - Tone: "more-casual", "as-is", or "more-formal"
+ * @param {string} [options.length="as-is"] - Length: "shorter", "as-is", or "longer"
  * @returns {Promise<Object>} Simplified text with key terms and statistics notes
  * @throws {Error} If no text is provided
  */
-export async function simplifyMedicalText(text) {
+export async function simplifyMedicalText(text, options = {}) {
   const trimmed = text?.trim();
   if (!trimmed) {
     throw new Error("No text provided for simplification.");
   }
+
+  const { tone = "more-casual", length = "as-is" } = options;
 
   if (typeof Rewriter !== 'undefined') {
     try {
       const available = await Rewriter.availability();
       if (available !== 'unavailable') {
         const rewriterOptions = {
-          tone: "more-casual",
-          length: "as-is",
-          sharedContext: "Explain advanced medical research concepts to trainees"
+          tone,
+          format: "plain-text",
+          length,
+          sharedContext: "Simplify medical terminology and research concepts for medical professionals, students, and researchers while maintaining scientific accuracy"
         };
         
         let rewriter;
