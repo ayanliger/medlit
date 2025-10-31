@@ -52,32 +52,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 function collectDocumentSnapshot() {
-  let title = document.title;
+  const title = document.title;
   const url = window.location.href;
-  
-  // For PDFs, document.title is just the filename
-  // Extract actual title from the first text content
-  const isPDF = url.toLowerCase().endsWith('.pdf') || document.contentType === 'application/pdf';
-  
-  const article = extractMainArticle();
-  
-  if (isPDF && article.textContent) {
-    // Extract first significant line as title (usually the paper title)
-    const lines = article.textContent.split('\n').map(l => l.trim()).filter(Boolean);
-    
-    // Find the first substantial line (more than 20 chars, likely the title)
-    const potentialTitle = lines.find(line => 
-      line.length > 20 && 
-      line.length < 300 && 
-      !line.toLowerCase().startsWith('http') &&
-      !line.match(/^\d+$/) // not just a page number
-    );
-    
-    if (potentialTitle) {
-      title = potentialTitle;
-      console.log('MedLit: Extracted PDF title:', title.substring(0, 100));
-    }
-  }
   
   const meta = {
     url,
@@ -85,6 +61,8 @@ function collectDocumentSnapshot() {
     metaDescription: document.querySelector("meta[name='description']")?.content || "",
     metaKeywords: document.querySelector("meta[name='keywords']")?.content || ""
   };
+
+  const article = extractMainArticle();
 
   return {
     meta,

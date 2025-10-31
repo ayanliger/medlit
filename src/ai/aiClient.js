@@ -539,53 +539,6 @@ export async function detectStudyType(documentSnapshot) {
     let studyType = normalizeStudyType(parsed.studyType);
     let framework = normalizeFramework(parsed.framework);
     
-    // BULLETPROOF SAFETY CHECK: Multiple detection methods
-    const title = (documentSnapshot?.meta?.title || '').toLowerCase();
-    const reasonsText = Array.isArray(parsed.reasons) ? parsed.reasons.join(' ').toLowerCase() : '';
-    
-    console.log('🔍 MedLit Safety Check:', {
-      title: title.substring(0, 100),
-      classifiedAs: studyType,
-      hasTitle: !!title,
-      isMisclassifiedAsReview: (studyType === "Systematic Review" || studyType === "Meta-Analysis")
-    });
-    
-    // Check if misclassified as review
-    if (studyType === "Systematic Review" || studyType === "Meta-Analysis") {
-      // Method 1: Check title for RCT keywords
-      const rctTitleKeywords = ['randomized', 'randomised', 'trial', ' rct ', 'phase 2', 'phase 3', 'phase ii', 'phase iii', 'phase 1', 'phase i'];
-      const titleHasRCT = rctTitleKeywords.some(kw => title.includes(kw));
-      
-      // Method 2: Check if AI's own reasoning contradicts classification
-      const reasonsMentionRCT = reasonsText.includes('rct') || 
-                                reasonsText.includes('randomized controlled trial') ||
-                                reasonsText.includes('indicating an rct') ||
-                                reasonsText.includes('confirms it is an rct') ||
-                                reasonsText.includes('trial registry');
-      
-      // Method 3: Check for trial registry ID
-      const hasTrialRegistry = reasonsText.includes('nct') || reasonsText.includes('isrctn');
-      
-      console.warn('🚨 Potential misclassification detected:', {
-        titleHasRCT,
-        reasonsMentionRCT,
-        hasTrialRegistry,
-        willOverride: (titleHasRCT || (reasonsMentionRCT && hasTrialRegistry))
-      });
-      
-      // Override if: (1) title clearly states RCT, OR (2) AI mentions RCT+registry
-      if (titleHasRCT || (reasonsMentionRCT && hasTrialRegistry)) {
-        console.warn(`\n⚠️⚠️⚠️ OVERRIDING MISCLASSIFICATION ⚠️⚠️⚠️`);
-        console.warn(`   FROM: ${studyType}`);
-        console.warn(`   TO: RCT`);
-        console.warn(`   REASON: ${titleHasRCT ? 'Title contains RCT keywords' : 'AI reasoning mentions RCT+registry'}`);
-        console.warn(`   Title: "${documentSnapshot?.meta?.title || 'N/A'}"\n`);
-        
-        studyType = "RCT";
-        framework = "CONSORT";
-      }
-    }
-    
     // Log classification for debugging
     console.log('MedLit Classification:', {
       original: { studyType: originalStudyType, framework: originalFramework },
