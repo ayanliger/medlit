@@ -211,6 +211,8 @@ export async function simplifyMedicalText(text, options = {}) {
           generatedAt: new Date().toISOString(),
           data: {
             plainEnglish: rewritten,
+            tone,
+            length,
             keyTerms: [],
             statisticsNotes: []
           }
@@ -244,7 +246,11 @@ export async function simplifyMedicalText(text, options = {}) {
     return {
       source: "chrome-ai-language-model",
       generatedAt: new Date().toISOString(),
-      data: parsed
+      data: {
+        ...parsed,
+        tone,
+        length
+      }
     };
   } catch (error) {
     console.warn("MedLit: falling back for simplification", error);
