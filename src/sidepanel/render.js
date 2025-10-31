@@ -161,10 +161,17 @@ export function renderSimplification(target, result) {
     return;
   }
 
+  // Format the heading based on tone and length parameters
+  const tone = result.data.tone || "more-casual";
+  const length = result.data.length || "as-is";
+  const toneLabel = tone === "more-casual" ? "Casual" : tone === "more-formal" ? "Formal" : "Neutral";
+  const lengthLabel = length === "shorter" ? "Shorter" : length === "longer" ? "Longer" : "Standard";
+  const heading = `Simplified (${toneLabel}, ${lengthLabel})`;
+
   const html = [
     renderResultMeta(result),
     `<div class="result-card">
-      <h3>Plain English</h3>
+      <h3>${escapeHtml(heading)}</h3>
       <p>${escapeHtml(result.data.plainEnglish || "")}</p>
     </div>`,
     result.data.keyTerms?.length

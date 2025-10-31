@@ -186,10 +186,12 @@ async function processSimplification(text) {
 
   setBusy("simplification", true);
   renderLoading(simplifierOutputEl, "Simplifying language…");
-  updateStatus("Generating plain-language explanation…");
+  updateStatus("Simplifying with Chrome AI…");
 
   try {
-    const result = await simplifyMedicalText(text);
+    const tone = document.getElementById("simplifierTone")?.value || "more-casual";
+    const length = document.getElementById("simplifierLength")?.value || "as-is";
+    const result = await simplifyMedicalText(text, { tone, length });
     appState.simplifications.unshift(result);
     renderSimplification(simplifierOutputEl, result);
     updateStatus(
