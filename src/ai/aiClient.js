@@ -774,6 +774,7 @@ function inferFromReasons(reasonsText) {
  * Creates a Chrome built-in AI LanguageModel session with proper configuration
  * @param {Object} options - Session configuration options
  * @param {Array<Object>} options.initialPrompts - Array of initial messages with role and content
+ * @param {string} [options.systemPrompt] - System prompt (will be converted to initialPrompts format)
  * @param {number} [options.temperature] - Temperature parameter for response randomness
  * @param {number} [options.topK] - Top-K parameter for token sampling
  * @param {string} [language="en"] - Expected input/output language (BCP 47 code)
@@ -804,6 +805,11 @@ async function createLanguageModelSession(options, language = "en", onProgress =
     // Use initialPrompts array per official API documentation
     if (options.initialPrompts) {
       sessionOptions.initialPrompts = options.initialPrompts;
+    } else if (options.systemPrompt) {
+      // Convert systemPrompt to initialPrompts format
+      sessionOptions.initialPrompts = [
+        { role: "system", content: options.systemPrompt }
+      ];
     }
     
     // Add download progress monitoring for better UX
@@ -844,6 +850,18 @@ function destroySession(session) {
   } catch (error) {
     console.debug("MedLit: failed to clean up AI session", error);
   }
+}
+
+/**
+ * Public wrapper for creating AI sessions (exported for use in other modules)
+ * @param {Object} options - Session options
+ * @param {string} [options.systemPrompt] - System prompt for the session
+ * @param {number} [options.temperature] - Temperature parameter
+ * @param {number} [options.topK] - Top-K parameter
+ * @returns {Promise<Object|null>} Language model session or null if unavailable
+ */
+export async function createAISession(options) {
+  return createLanguageModelSession(options, "en");
 }
 
 function safeJsonParse(payload) {

@@ -337,3 +337,141 @@ code {
   font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 12px;
 }
+
+/* Chat Interface */
+
+.chat-messages {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.chat-messages.empty-state {
+  color: var(--text-muted);
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-message-user {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  align-self: flex-end;
+  max-width: 85%;
+}
+
+.chat-message-assistant {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  align-self: flex-start;
+  max-width: 90%;
+}
+
+.chat-message-error {
+  border-color: color-mix(in srgb, #ef4444 50%, transparent);
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+}
+
+.chat-message-loading {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.chat-message-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.chat-message-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: canvas;
+  color: CanvasText;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chat-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-send-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.chat-send-btn:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.chat-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Chat context indicators */
+.chat-context-indicator {
+  padding: 0.75em;
+  margin-bottom: 0.5em;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-context-indicator strong {
+  display: block;
+  margin-bottom: 0.25em;
+}
+
+.context-size-info {
+  color: color-mix(in srgb, CanvasText 70%, transparent);
+}
+
+.context-warning {
+  display: block;
+  margin-top: 0.5em;
+  padding-top: 0.5em;
+  border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}

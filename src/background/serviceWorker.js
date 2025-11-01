@@ -139,6 +139,12 @@ async function setupContextMenus() {
     title: "MedLit: Translate Abstract",
     contexts: ["selection"]
   });
+
+  chrome.contextMenus.create({
+    id: CONTEXT_MENUS.chat,
+    title: "MedLit: Chat with Selection",
+    contexts: ["selection"]
+  });
 }
 
 function buildContextMenuMessage(info) {
@@ -166,6 +172,11 @@ function buildContextMenuMessage(info) {
       return {
         type: MESSAGE_TYPES.CONTEXT_TRANSLATE,
         payload: { text: info.selectionText, detectedLanguage: info.selectionTextLanguage }
+      };
+    case CONTEXT_MENUS.chat:
+      return {
+        type: MESSAGE_TYPES.CONTEXT_CHAT,
+        payload: { text: info.selectionText }
       };
     default:
       return null;

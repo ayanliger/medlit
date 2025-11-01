@@ -26,21 +26,46 @@
           </div>
         </header>
         <div id="picoOutput" class="section-body empty-state">
-          <p>No summary yet. Press the button above to generate a framework-aligned summary (PICO, PRISMA, STROBE, STARD, CARE, COREQ, or general).</p>
+          <p><strong>Option 1:</strong> Click "Generate Study Summary" above to analyze the full page.</p>
+          <p><strong>Option 2:</strong> Highlight text, right-click → "MedLit: Generate Summary from Selection".</p>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <header class="section-header">
+          <h2>Ask Questions</h2>
+          <div class="section-actions">
+            <button class="ghost" id="clearChatBtn" title="Clear conversation">
+              Clear
+            </button>
+          </div>
+        </header>
+        <div class="section-body">
+          <div id="chatMessages" class="chat-messages empty-state">
+            <p><strong>Option 1:</strong> Generate a summary first, then ask questions about the study.</p>
+            <p><strong>Option 2:</strong> Highlight text, right-click → "MedLit: Chat with Selection" to ask about specific content.</p>
+          </div>
+          <form id="chatForm" class="chat-input-form">
+            <input
+              type="text"
+              id="chatInput"
+              class="chat-input"
+              placeholder="Ask about the summarized text..."
+              disabled
+            />
+            <button type="submit" class="chat-send-btn" disabled>
+              Send
+            </button>
+          </form>
         </div>
       </section>
 
       <section class="panel-section">
         <header class="section-header">
           <h2>Methodology Assessment</h2>
-          <div class="section-actions">
-            <button class="ghost" id="methodologyBtn" title="Run methodology scanner">
-              Scan Methods
-            </button>
-          </div>
         </header>
         <div id="methodologyOutput" class="section-body empty-state">
-          <p>Highlight a methods section in the paper and use "Scan Methodology" from the context menu or button above.</p>
+          <p>Highlight a methods section in the paper, right-click → "MedLit: Scan Methodology".</p>
         </div>
       </section>
 
