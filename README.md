@@ -3,7 +3,9 @@
 MedLit is a Google Chrome Extension developed for accelerated medical literature review using Chrome's built-in AI capabilities. It is able to extract structured study summaries, assess methodology quality, simplify medical technical language, translate medical texts and provide a chat interface with Google's Gemini Nano LLM, all available on-device with proper offline support and privacy preservation.
   
 **APIs Used:** Prompt API, Rewriter API, Translator API
+
 **Model:** Gemini Nano (on-device)
+
 **Developed for:** [Google Chrome Built-in AI Challenge 2025](https://devpost.com/software/medlit)
 
 ---
