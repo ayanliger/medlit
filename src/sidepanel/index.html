@@ -20,13 +20,43 @@
         <header class="section-header">
           <h2>Structured Summary</h2>
           <div class="section-actions">
-            <button class="ghost" id="refreshSummaryBtn" title="Re-run analysis">
-              Refresh
+            <button class="ghost" id="clearSummaryBtn" title="Clear summary">
+              Clear
             </button>
           </div>
         </header>
         <div id="picoOutput" class="section-body empty-state">
-          <p>No summary yet. Press the button above to generate a framework-aligned summary (PICO, PRISMA, STROBE, STARD, CARE, COREQ, or general).</p>
+          <p><strong>Option 1:</strong> Click "Generate Study Summary" above to analyze the full page.</p>
+          <p><strong>Option 2 (Recommended for PDFs):</strong> Highlight text, right-click → "Summarize from selection".</p>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <header class="section-header">
+          <h2>Ask Questions</h2>
+          <div class="section-actions">
+            <button class="ghost" id="clearChatBtn" title="Clear conversation">
+              Clear
+            </button>
+          </div>
+        </header>
+        <div class="section-body">
+          <div id="chatMessages" class="chat-messages empty-state">
+            <p><strong>Option 1:</strong> Generate a summary first, then ask questions about the study.</p>
+            <p><strong>Option 2:</strong> Highlight text, right-click → "Chat with selection" to ask about specific content.</p>
+          </div>
+          <form id="chatForm" class="chat-input-form">
+            <input
+              type="text"
+              id="chatInput"
+              class="chat-input"
+              placeholder="Ask about the summarized text..."
+              disabled
+            />
+            <button type="submit" class="chat-send-btn" disabled>
+              Send
+            </button>
+          </form>
         </div>
       </section>
 
@@ -34,13 +64,13 @@
         <header class="section-header">
           <h2>Methodology Assessment</h2>
           <div class="section-actions">
-            <button class="ghost" id="methodologyBtn" title="Run methodology scanner">
-              Scan Methods
+            <button class="ghost" id="clearMethodologyBtn" title="Clear assessment">
+              Clear
             </button>
           </div>
         </header>
         <div id="methodologyOutput" class="section-body empty-state">
-          <p>Highlight a methods section in the paper and use "Scan Methodology" from the context menu or button above.</p>
+          <p>Highlight a methods section in the paper, right-click → "Assess methodology from selection".</p>
         </div>
       </section>
 
@@ -64,19 +94,27 @@
                 <option value="longer">Longer</option>
               </select>
             </label>
+            <button class="ghost" id="clearSimplifierBtn" title="Clear simplifications">
+              Clear
+            </button>
           </div>
         </header>
         <div id="simplifierOutput" class="section-body empty-state">
-          <p>Highlight complex medical or technical text, then select "MedLit: Simplify Language" from the context menu.</p>
+          <p>Highlight complex medical or technical text, then select "Simplify language from selection" from the context menu.</p>
         </div>
       </section>
 
       <section class="panel-section">
         <header class="section-header">
           <h2>Translation</h2>
+          <div class="section-actions">
+            <button class="ghost" id="clearTranslationBtn" title="Clear translations">
+              Clear
+            </button>
+          </div>
         </header>
         <div id="translationOutput" class="section-body empty-state">
-          <p>Translate non-English text to English using the "MedLit: Translate Abstract" context menu option.</p>
+          <p>Translate non-English text to English using the "Translate selection to English" context menu option.</p>
         </div>
       </section>
     </main>
@@ -84,11 +122,152 @@
     <footer class="footer">
       <div class="status" id="statusMessage">Ready</div>
       <div class="controls">
-        <button class="ghost" id="exportBtn" disabled>Export Key Points</button>
+        <button class="ghost" id="exportBtn">Export</button>
         <button class="ghost" id="settingsBtn">Settings</button>
       </div>
     </footer>
 
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal" style="display: none;">
+      <div class="modal-overlay" id="exportModalOverlay"></div>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2>Export Data</h2>
+          <button class="modal-close" id="exportModalClose" title="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="export-section">
+            <h3>Select sections to export:</h3>
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportSummary" value="summary">
+                <span>Summary</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportMethodology" value="methodology">
+                <span>Methodology Assessment</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportSimplification" value="simplification">
+                <span>Language Simplification</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportTranslation" value="translation">
+                <span>Translation</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportChat" value="chat">
+                <span>Chat History</span>
+              </label>
+              <label class="checkbox-label checkbox-all">
+                <input type="checkbox" id="exportAll">
+                <span><strong>Select All</strong></span>
+              </label>
+            </div>
+          </div>
+          <div class="export-section">
+            <h3>Choose format:</h3>
+            <div class="format-buttons">
+              <button class="format-btn" id="exportJson" data-format="json">JSON</button>
+              <button class="format-btn" id="exportMarkdown" data-format="md">Markdown</button>
+              <button class="format-btn" id="exportPdf" data-format="pdf" disabled title="Coming soon">PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display: none;">
+      <div class="modal-overlay" id="settingsModalOverlay"></div>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button class="modal-close" id="settingsModalClose" title="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-section">
+            <h3>Theme</h3>
+            <p class="settings-description">Choose a color scheme for the sidebar</p>
+            <div class="settings-group">
+              <label class="settings-radio-label">
+                <input type="radio" name="theme" value="light" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-icon">☀️</span>
+                  <span class="settings-radio-text">Light</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="theme" value="dark" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-icon">🌙</span>
+                  <span class="settings-radio-text">Dark</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="theme" value="high-contrast" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-icon">◐</span>
+                  <span class="settings-radio-text">High Contrast</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h3>Font Family</h3>
+            <p class="settings-description">Choose a font for better readability</p>
+            <div class="settings-group">
+              <label class="settings-radio-label">
+                <input type="radio" name="font" value="sans-serif" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-text" style="font-family: 'Inter', system-ui, sans-serif;">Sans Serif</span>
+                  <span class="settings-radio-subtitle">Modern & clean</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="font" value="serif" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-text" style="font-family: Georgia, serif;">Serif</span>
+                  <span class="settings-radio-subtitle">Traditional & formal</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="font" value="dyslexic" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-text" style="font-family: 'Comic Sans MS', sans-serif;">Dyslexic-friendly</span>
+                  <span class="settings-radio-subtitle">Easier for some readers</span>
+                </div>
+              </label>
+            </div>
+            
+            <!-- Dyslexic font customization sliders -->
+            <div id="dyslexicOptions" class="dyslexic-options" style="display: none;">
+              <div class="slider-group">
+                <label class="slider-label">
+                  <span class="slider-label-text">Letter Spacing</span>
+                  <span class="slider-value" id="letterSpacingValue">0.02em</span>
+                </label>
+                <input type="range" id="letterSpacingSlider" class="slider" min="0" max="0.1" step="0.01" value="0.02">
+              </div>
+              <div class="slider-group">
+                <label class="slider-label">
+                  <span class="slider-label-text">Font Size</span>
+                  <span class="slider-value" id="fontSizeValue">14px</span>
+                </label>
+                <input type="range" id="fontSizeSlider" class="slider" min="12" max="18" step="1" value="14">
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-footer">
+            <button class="primary-action" id="saveSettings">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./lib/marked.min.js"></script>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

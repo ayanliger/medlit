@@ -18,6 +18,7 @@ import {
   createFallbackTranslation,
   createFallbackKeyPoints
 } from "./fallbacks.js";
+import { validateMethodologyText } from "./validators.js";
 import { MODEL_UNAVAILABLE_MESSAGE } from "../shared/constants.js";
 
 /**
@@ -121,6 +122,59 @@ export async function generateStructuredSummary(documentSnapshot) {
  * @returns {Promise<Object>} Methodology assessment with quality scores
  */
 export async function evaluateMethodology({ methodsText, fullText }) {
+  // Pre-validate the methodology text
+  const validation = validateMethodologyText(methodsText);
+  
+  // If validation fails with low confidence, return early with validation error
+  if (!validation.isValid) {
+    return {
+      source: "validation-rejected",
+      generatedAt: new Date().toISOString(),
+      validation,
+      data: {
+        contentValidation: {
+          isMethodology: false,
+          confidence: validation.confidence,
+          rationale: validation.reason
+        },
+        researchQuestionClarity: {
+          score: 0,
+          strengths: [],
+          concerns: ["Unable to assess: text does not appear to be a methodology section."]
+        },
+        sampleSizePower: {
+          score: 0,
+          calculated: null,
+          actual: null,
+          assessment: "Not assessed - invalid methodology content."
+        },
+        randomization: {
+          score: 0,
+          method: "Not assessed",
+          concerns: []
+        },
+        blinding: {
+          participants: false,
+          assessors: false,
+          analysts: false,
+          concerns: ["Not assessed - invalid methodology content."]
+        },
+        statisticalApproach: {
+          score: 0,
+          methods: [],
+          strengths: [],
+          concerns: ["Not assessed - invalid methodology content."]
+        },
+        overallQualityScore: 0,
+        keyLimitations: [
+          "The selected text does not appear to be a methodology section.",
+          "Please select text from the Methods/Methodology section of the paper."
+        ],
+        recommendation: validation.reason
+      }
+    };
+  }
+
   const fallback = createFallbackMethodology(methodsText, MODEL_UNAVAILABLE_MESSAGE);
 
   const session = await createLanguageModelSession({
@@ -144,9 +198,71 @@ export async function evaluateMethodology({ methodsText, fullText }) {
       throw new Error("Language model returned invalid JSON.");
     }
 
+    // Double-check AI's own validation
+    const aiValidation = parsed.contentValidation;
+    if (aiValidation && !aiValidation.isMethodology) {
+      return {
+        source: "chrome-ai-language-model",
+        generatedAt: new Date().toISOString(),
+        validation: {
+          isValid: false,
+          confidence: aiValidation.confidence,
+          reason: aiValidation.rationale
+        },
+        data: parsed
+      };
+    }
+
+    // Apply confidence-based score adjustment for low-confidence assessments
+    const effectiveConfidence = Math.max(validation.confidence, aiValidation?.confidence || 0);
+    
+    if (effectiveConfidence < 80) {
+      // Aggressive scaling for low-confidence assessments
+      // Confidence <50: cap at 30% of original score (essentially reject)
+      // Confidence 50-60: cap at 50% of original score
+      // Confidence 60-70: cap at 65% of original score  
+      // Confidence 70-80: cap at 80% of original score
+      const scaleFactor = effectiveConfidence < 50 ? 0.3 : 
+                         effectiveConfidence < 60 ? 0.5 :
+                         effectiveConfidence < 70 ? 0.65 : 0.8;
+      
+      // Adjust individual scores
+      if (parsed.researchQuestionClarity?.score) {
+        parsed.researchQuestionClarity.score = Math.round(parsed.researchQuestionClarity.score * scaleFactor);
+        if (parsed.researchQuestionClarity.score < 1) parsed.researchQuestionClarity.score = 1;
+      }
+      if (parsed.sampleSizePower?.score) {
+        parsed.sampleSizePower.score = Math.round(parsed.sampleSizePower.score * scaleFactor);
+        if (parsed.sampleSizePower.score < 1) parsed.sampleSizePower.score = 1;
+      }
+      if (parsed.randomization?.score) {
+        parsed.randomization.score = Math.round(parsed.randomization.score * scaleFactor);
+        if (parsed.randomization.score < 1) parsed.randomization.score = 1;
+      }
+      if (parsed.statisticalApproach?.score) {
+        parsed.statisticalApproach.score = Math.round(parsed.statisticalApproach.score * scaleFactor);
+        if (parsed.statisticalApproach.score < 1) parsed.statisticalApproach.score = 1;
+      }
+      
+      // Adjust overall quality score
+      if (parsed.overallQualityScore) {
+        parsed.overallQualityScore = Math.round(parsed.overallQualityScore * scaleFactor);
+      }
+      
+      // Add limitation about low confidence
+      if (!parsed.keyLimitations) {
+        parsed.keyLimitations = [];
+      }
+      parsed.keyLimitations.unshift(
+        `Assessment confidence is ${effectiveConfidence}%. The selected text may not be entirely from a methodology section, which affects score reliability.`
+      );
+    }
+
+    // Include our pre-validation in the response
     return {
       source: "chrome-ai-language-model",
       generatedAt: new Date().toISOString(),
+      validation,
       data: parsed
     };
   } catch (error) {
@@ -418,8 +534,18 @@ export async function detectStudyType(documentSnapshot) {
     }
     
     // Normalize study type and framework to handle variations
+    const originalStudyType = parsed.studyType;
+    const originalFramework = parsed.framework;
     let studyType = normalizeStudyType(parsed.studyType);
     let framework = normalizeFramework(parsed.framework);
+    
+    // Log classification for debugging
+    console.log('MedLit Classification:', {
+      original: { studyType: originalStudyType, framework: originalFramework },
+      normalized: { studyType, framework },
+      confidence: parsed.confidence,
+      reasons: Array.isArray(parsed.reasons) ? parsed.reasons : []
+    });
     
     // Fallback heuristic: if classifier returned "Other"/"None" but reasons contain clear keywords, override
     if (studyType === "Other" || framework === "None") {
@@ -468,30 +594,48 @@ function normalizeStudyType(value) {
   if (!value || typeof value !== 'string') return "Other";
   const normalized = value.trim().toLowerCase();
   
+  // Return as-is if it matches canonical values exactly (check first to avoid false positives)
+  const canonical = ["RCT", "Cohort", "Case-Control", "Cross-Sectional", "Systematic Review", 
+                     "Meta-Analysis", "Diagnostic Accuracy", "Case Report", "Case Series", 
+                     "Qualitative", "Basic Science", "Other"];
+  if (canonical.includes(value.trim())) return value.trim();
+  
   // Map common variations to canonical values
+  // IMPORTANT: Check more specific patterns before generic ones to avoid false positives
+  
+  // Primary study types (check these FIRST before review types)
   if (normalized.includes('rct') || normalized.includes('randomized controlled') || 
-      normalized.includes('clinical trial') || normalized.includes('randomised')) {
+      normalized.includes('randomised controlled')) {
     return "RCT";
   }
-  if (normalized.includes('cohort')) return "Cohort";
+  if (normalized.includes('diagnostic accuracy') || normalized.includes('diagnostic test')) return "Diagnostic Accuracy";
   if (normalized.includes('case-control') || normalized.includes('case control')) return "Case-Control";
   if (normalized.includes('cross-sectional') || normalized.includes('cross sectional')) return "Cross-Sectional";
-  if (normalized.includes('systematic review')) return "Systematic Review";
-  if (normalized.includes('meta-analysis') || normalized.includes('metaanalysis')) return "Meta-Analysis";
-  if (normalized.includes('diagnostic accuracy') || normalized.includes('diagnostic test')) return "Diagnostic Accuracy";
-  if (normalized.includes('case report')) return "Case Report";
+  if (normalized.includes('cohort study') || (normalized.includes('cohort') && !normalized.includes('not a cohort'))) return "Cohort";
   if (normalized.includes('case series')) return "Case Series";
+  if (normalized.includes('case report')) return "Case Report";
   if (normalized.includes('qualitative')) return "Qualitative";
   if (normalized.includes('basic science') || normalized.includes('bench') || 
       normalized.includes('in vitro') || normalized.includes('in vivo')) {
     return "Basic Science";
   }
   
-  // Return as-is if it matches canonical values exactly
-  const canonical = ["RCT", "Cohort", "Case-Control", "Cross-Sectional", "Systematic Review", 
-                     "Meta-Analysis", "Diagnostic Accuracy", "Case Report", "Case Series", 
-                     "Qualitative", "Basic Science", "Other"];
-  if (canonical.includes(value.trim())) return value.trim();
+  // Secondary literature (check LAST to avoid overriding primary studies)
+  // Be MORE strict: require clear affirmative language
+  if ((normalized.includes('is a systematic review') || normalized.includes('systematic review of')) && 
+      !normalized.includes('not a systematic review') && !normalized.includes('not systematic review')) {
+    return "Systematic Review";
+  }
+  if ((normalized.includes('is a meta-analysis') || normalized.includes('meta-analysis of') || 
+       normalized.includes('metaanalysis')) && 
+      !normalized.includes('not a meta-analysis') && !normalized.includes('no meta-analysis')) {
+    return "Meta-Analysis";
+  }
+  
+  // Fallback for clinical trials mentioned without RCT keyword
+  if (normalized.includes('clinical trial') || normalized.includes('randomised') || normalized.includes('randomized')) {
+    return "RCT";
+  }
   
   return "Other";
 }
@@ -541,34 +685,69 @@ function inferFromReasons(reasonsText) {
   
   if (!reasonsText) return result;
   
-  // Check for study type keywords in reasons
+  // CRITICAL: Check in order of specificity to avoid false positives
+  // Primary research studies FIRST (these are most common and should take precedence)
+  
+  // RCT indicators (check first - most specific)
   if (reasonsText.includes('randomized') || reasonsText.includes('randomised') || 
-      reasonsText.includes('rct') || reasonsText.includes('clinical trial') || 
-      reasonsText.includes('phase 2') || reasonsText.includes('phase 3') || 
-      reasonsText.includes('phase ii') || reasonsText.includes('phase iii')) {
+      reasonsText.includes('rct') || reasonsText.includes('phase 2') || reasonsText.includes('phase 3') || 
+      reasonsText.includes('phase ii') || reasonsText.includes('phase iii') ||
+      reasonsText.includes('randomized controlled') || reasonsText.includes('randomised controlled')) {
     result.studyType = "RCT";
-  } else if (reasonsText.includes('systematic review')) {
-    result.studyType = "Systematic Review";
-  } else if (reasonsText.includes('meta-analysis') || reasonsText.includes('metaanalysis')) {
-    result.studyType = "Meta-Analysis";
-  } else if (reasonsText.includes('cohort study') || reasonsText.includes('cohort design')) {
+  } 
+  // Observational study types
+  else if (reasonsText.includes('cohort study') || reasonsText.includes('cohort design') ||
+           (reasonsText.includes('cohort') && reasonsText.includes('prospective'))) {
     result.studyType = "Cohort";
-  } else if (reasonsText.includes('case-control') || reasonsText.includes('case control')) {
+  } 
+  else if (reasonsText.includes('case-control') || reasonsText.includes('case control')) {
     result.studyType = "Case-Control";
-  } else if (reasonsText.includes('cross-sectional') || reasonsText.includes('cross sectional')) {
+  } 
+  else if (reasonsText.includes('cross-sectional') || reasonsText.includes('cross sectional')) {
     result.studyType = "Cross-Sectional";
-  } else if (reasonsText.includes('diagnostic accuracy') || 
-             (reasonsText.includes('sensitivity') && reasonsText.includes('specificity'))) {
+  } 
+  // Diagnostic studies
+  else if (reasonsText.includes('diagnostic accuracy') || reasonsText.includes('diagnostic test') ||
+           (reasonsText.includes('sensitivity') && reasonsText.includes('specificity') && 
+            reasonsText.includes('diagnostic'))) {
     result.studyType = "Diagnostic Accuracy";
-  } else if (reasonsText.includes('case report')) {
-    result.studyType = "Case Report";
-  } else if (reasonsText.includes('case series')) {
+  } 
+  // Case studies
+  else if (reasonsText.includes('case series')) {
     result.studyType = "Case Series";
-  } else if (reasonsText.includes('qualitative')) {
+  } 
+  else if (reasonsText.includes('case report')) {
+    result.studyType = "Case Report";
+  } 
+  // Qualitative
+  else if (reasonsText.includes('qualitative') || reasonsText.includes('interviews') ||
+           reasonsText.includes('focus groups') || reasonsText.includes('thematic analysis')) {
     result.studyType = "Qualitative";
-  } else if (reasonsText.includes('in vitro') || reasonsText.includes('in vivo') || 
-             reasonsText.includes('animal model') || reasonsText.includes('bench')) {
+  } 
+  // Basic science
+  else if (reasonsText.includes('in vitro') || reasonsText.includes('in vivo') || 
+           reasonsText.includes('animal model') || reasonsText.includes('bench')) {
     result.studyType = "Basic Science";
+  }
+  // ONLY check for secondary literature if NO primary study indicators found
+  // AND require strong affirmative language
+  else if ((reasonsText.includes('is a systematic review') || 
+            reasonsText.includes('systematic review of') ||
+            reasonsText.includes('systematically reviewed')) &&
+           !reasonsText.includes('not a systematic review') &&
+           !reasonsText.includes('not systematic')) {
+    result.studyType = "Systematic Review";
+  } 
+  else if ((reasonsText.includes('is a meta-analysis') || 
+            reasonsText.includes('meta-analysis of') ||
+            reasonsText.includes('pooled analysis')) &&
+           !reasonsText.includes('not a meta-analysis') &&
+           !reasonsText.includes('no meta-analysis')) {
+    result.studyType = "Meta-Analysis";
+  }
+  // Fallback for clinical trial mentions
+  else if (reasonsText.includes('clinical trial')) {
+    result.studyType = "RCT";
   }
   
   // Check for framework keywords in reasons
@@ -595,6 +774,7 @@ function inferFromReasons(reasonsText) {
  * Creates a Chrome built-in AI LanguageModel session with proper configuration
  * @param {Object} options - Session configuration options
  * @param {Array<Object>} options.initialPrompts - Array of initial messages with role and content
+ * @param {string} [options.systemPrompt] - System prompt (will be converted to initialPrompts format)
  * @param {number} [options.temperature] - Temperature parameter for response randomness
  * @param {number} [options.topK] - Top-K parameter for token sampling
  * @param {string} [language="en"] - Expected input/output language (BCP 47 code)
@@ -625,6 +805,11 @@ async function createLanguageModelSession(options, language = "en", onProgress =
     // Use initialPrompts array per official API documentation
     if (options.initialPrompts) {
       sessionOptions.initialPrompts = options.initialPrompts;
+    } else if (options.systemPrompt) {
+      // Convert systemPrompt to initialPrompts format
+      sessionOptions.initialPrompts = [
+        { role: "system", content: options.systemPrompt }
+      ];
     }
     
     // Add download progress monitoring for better UX
@@ -665,6 +850,18 @@ function destroySession(session) {
   } catch (error) {
     console.debug("MedLit: failed to clean up AI session", error);
   }
+}
+
+/**
+ * Public wrapper for creating AI sessions (exported for use in other modules)
+ * @param {Object} options - Session options
+ * @param {string} [options.systemPrompt] - System prompt for the session
+ * @param {number} [options.temperature] - Temperature parameter
+ * @param {number} [options.topK] - Top-K parameter
+ * @returns {Promise<Object|null>} Language model session or null if unavailable
+ */
+export async function createAISession(options) {
+  return createLanguageModelSession(options, "en");
 }
 
 function safeJsonParse(payload) {

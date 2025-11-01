@@ -2,9 +2,11 @@
  * Context menu identifiers
  */
 export const CONTEXT_MENUS = {
+  summarize: "medlit_context_summarize",
   methodology: "medlit_context_methodology",
   simplify: "medlit_context_simplify",
-  translate: "medlit_context_translate"
+  translate: "medlit_context_translate",
+  chat: "medlit_context_chat"
 };
 
 /**
@@ -15,9 +17,11 @@ export const MESSAGE_TYPES = {
   REQUEST_LAST_SELECTION: "medlit:request-last-selection",
   GET_DOCUMENT_CONTENTS: "medlit:get-document-contents",
   GET_LAST_SELECTION: "medlit:get-last-selection",
+  CONTEXT_SUMMARIZE: "medlit:context-summarize",
   CONTEXT_METHODOLOGY: "medlit:context-methodology",
   CONTEXT_SIMPLIFY: "medlit:context-simplify",
-  CONTEXT_TRANSLATE: "medlit:context-translate"
+  CONTEXT_TRANSLATE: "medlit:context-translate",
+  CONTEXT_CHAT: "medlit:context-chat"
 };
 
 /**

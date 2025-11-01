@@ -7,57 +7,14 @@ import { MODEL_UNAVAILABLE_MESSAGE } from "../shared/constants.js";
  * @returns {Object} Fallback summary object
  */
 export function createFallbackSummary(documentSnapshot, message = MODEL_UNAVAILABLE_MESSAGE) {
-  const text = (documentSnapshot?.article?.textContent ?? "").replace(/\s+/g, " ").trim();
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const sampleSentences = sentences.slice(0, 3);
-
+  // Return error state instead of fake data - this extension REQUIRES Chrome built-in AI
   return {
-    source: "fallback",
+    source: "error",
     generatedAt: new Date().toISOString(),
+    error: true,
     message,
-    data: {
-      studyDesign: {
-        type: "Unknown",
-        setting: "Not detected",
-        studyPeriod: "Not detected",
-        registrationID: null
-      },
-      population: {
-        sampleSize: { intervention: null, control: null, total: null },
-        demographics: { age: "Not detected", gender: "Not detected", ethnicity: "Not detected" },
-        inclusionCriteria: [],
-        exclusionCriteria: []
-      },
-      intervention: {
-        description: "Pending analysis",
-        dosage: "Pending analysis",
-        duration: "Pending analysis"
-      },
-      comparison: {
-        controlType: "Not detected",
-        description: "Pending analysis"
-      },
-      outcomes: {
-        primary: {
-          measure: "Pending analysis",
-          interventionResult: "Pending analysis",
-          controlResult: "Pending analysis",
-          pValue: null,
-          confidenceInterval: "Pending analysis",
-          effectSize: "Pending analysis"
-        },
-        secondary: []
-      },
-      interpretation: {
-        NNT: null,
-        interpretation:
-          sampleSentences.length > 0
-            ? sampleSentences.join(" ")
-            : "Review the study details once Chrome AI is available.",
-        limitations: [],
-        applicability: "Pending analysis"
-      }
-    }
+    userMessage: "Chrome Built-in AI is required for MedLit to function. Please enable it in chrome://flags/#optimization-guide-on-device-model",
+    data: null
   };
 }
 
@@ -68,50 +25,14 @@ export function createFallbackSummary(documentSnapshot, message = MODEL_UNAVAILA
  * @returns {Object} Fallback methodology object
  */
 export function createFallbackMethodology(methodsText, message = MODEL_UNAVAILABLE_MESSAGE) {
-  const cleanText = (methodsText ?? "").replace(/\s+/g, " ").trim();
-  const excerpt = cleanText.slice(0, 360);
-
+  // Return error state instead of fake scores
   return {
-    source: "fallback",
+    source: "error",
     generatedAt: new Date().toISOString(),
+    error: true,
     message,
-    data: {
-      researchQuestionClarity: {
-        score: 3,
-        strengths: ["AI model unavailable; review manually."],
-        concerns: []
-      },
-      sampleSizePower: {
-        score: 3,
-        calculated: null,
-        actual: null,
-        assessment: "Unable to estimate power without AI support."
-      },
-      randomization: {
-        score: 2,
-        method: "Not assessed",
-        concerns: []
-      },
-      blinding: {
-        participants: false,
-        assessors: false,
-        analysts: false,
-        concerns: ["No automated assessment available."]
-      },
-      statisticalApproach: {
-        score: 3,
-        methods: [],
-        strengths: [],
-        concerns: ["Pending AI-driven review."]
-      },
-      overallQualityScore: 50,
-      keyLimitations: [
-        "MedLit could not evaluate the methodology automatically. Review methods manually."
-      ],
-      recommendation: excerpt
-        ? `Review methods manually. Excerpt: ${excerpt}${cleanText.length > 360 ? "…" : ""}`
-        : "Review methods manually once AI is available."
-    }
+    userMessage: "Chrome Built-in AI is required for methodology assessment. Please enable it in chrome://flags/#optimization-guide-on-device-model",
+    data: null
   };
 }
 
@@ -122,15 +43,14 @@ export function createFallbackMethodology(methodsText, message = MODEL_UNAVAILAB
  * @returns {Object} Fallback simplification object
  */
 export function createFallbackSimplification(text, message = MODEL_UNAVAILABLE_MESSAGE) {
+  // Return error state - don't return original text as "simplified"
   return {
-    source: "fallback",
+    source: "error",
     generatedAt: new Date().toISOString(),
+    error: true,
     message,
-    data: {
-      plainEnglish: text,
-      keyTerms: [],
-      statisticsNotes: []
-    }
+    userMessage: "Chrome Built-in AI (Rewriter API) is required for text simplification. Please enable it in chrome://flags/#optimization-guide-on-device-model",
+    data: null
   };
 }
 
@@ -142,15 +62,14 @@ export function createFallbackSimplification(text, message = MODEL_UNAVAILABLE_M
  * @returns {Object} Fallback translation object
  */
 export function createFallbackTranslation(text, detectedLanguage, message = MODEL_UNAVAILABLE_MESSAGE) {
+  // Return error state - don't return untranslated text as "translated"
   return {
-    source: "fallback",
+    source: "error",
     generatedAt: new Date().toISOString(),
+    error: true,
     message,
-    data: {
-      translatedText: text,
-      detectedLanguage: detectedLanguage || "unknown",
-      notes: ["Translation preview only. Chrome AI translator unavailable."]
-    }
+    userMessage: "Chrome Built-in AI (Translator API) is required for translation. Please enable it in chrome://flags/#optimization-guide-on-device-model",
+    data: null
   };
 }
 
@@ -160,23 +79,13 @@ export function createFallbackTranslation(text, detectedLanguage, message = MODE
  * @returns {Object} Fallback key points object
  */
 export function createFallbackKeyPoints(fullText) {
-  const sentences = (fullText ?? "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(/(?<=[.!?])\s+/)
-    .filter(Boolean)
-    .slice(0, 5);
-
+  // Return error state instead of arbitrary sentence extraction
   return {
-    source: "fallback",
+    source: "error",
     generatedAt: new Date().toISOString(),
+    error: true,
     message: MODEL_UNAVAILABLE_MESSAGE,
-    data: {
-      keyHypothesis: sentences.slice(0, 1),
-      criticalFindings: sentences.slice(1, 3),
-      studyLimitations: ["Manual review required."],
-      implications: ["Await AI analysis for actionable points."],
-      futureResearch: ["Identify future directions once AI summary is ready."]
-    }
+    userMessage: "Chrome Built-in AI is required for key points extraction. Please enable it in chrome://flags/#optimization-guide-on-device-model",
+    data: null
   };
 }

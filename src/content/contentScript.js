@@ -53,8 +53,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 function collectDocumentSnapshot() {
   const title = document.title;
+  const url = window.location.href;
+  
   const meta = {
-    url: window.location.href,
+    url,
     title,
     metaDescription: document.querySelector("meta[name='description']")?.content || "",
     metaKeywords: document.querySelector("meta[name='keywords']")?.content || ""

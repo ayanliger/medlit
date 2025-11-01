@@ -117,20 +117,32 @@ async function setupContextMenus() {
   });
 
   chrome.contextMenus.create({
+    id: CONTEXT_MENUS.summarize,
+    title: "Summarize from selection",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
     id: CONTEXT_MENUS.methodology,
-    title: "MedLit: Scan Methodology",
+    title: "Assess methodology from selection",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.simplify,
-    title: "MedLit: Simplify Language",
+    title: "Simplify language from selection",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.translate,
-    title: "MedLit: Translate Abstract",
+    title: "Translate selection to English",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
+    id: CONTEXT_MENUS.chat,
+    title: "Chat with selection",
     contexts: ["selection"]
   });
 }
@@ -141,6 +153,11 @@ function buildContextMenuMessage(info) {
   }
 
   switch (info.menuItemId) {
+    case CONTEXT_MENUS.summarize:
+      return {
+        type: MESSAGE_TYPES.CONTEXT_SUMMARIZE,
+        payload: { text: info.selectionText }
+      };
     case CONTEXT_MENUS.methodology:
       return {
         type: MESSAGE_TYPES.CONTEXT_METHODOLOGY,
@@ -155,6 +172,11 @@ function buildContextMenuMessage(info) {
       return {
         type: MESSAGE_TYPES.CONTEXT_TRANSLATE,
         payload: { text: info.selectionText, detectedLanguage: info.selectionTextLanguage }
+      };
+    case CONTEXT_MENUS.chat:
+      return {
+        type: MESSAGE_TYPES.CONTEXT_CHAT,
+        payload: { text: info.selectionText }
       };
     default:
       return null;
