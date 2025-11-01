@@ -6,7 +6,7 @@ MedLit is a Google Chrome Extension developed for accelerated medical literature
 
 **Model:** Gemini Nano (on-device)
 
-**Developed for:** [Google Chrome Built-in AI Challenge 2025](https://devpost.com/software/medlit)
+**Developed for:** [Google Chrome Built-in AI Challenge 2025](https://googlechromeai2025.devpost.com/) | [MedLit on Devpost](https://devpost.com/software/medlit)
 
 ---
 
