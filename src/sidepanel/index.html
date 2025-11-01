@@ -122,11 +122,62 @@
     <footer class="footer">
       <div class="status" id="statusMessage">Ready</div>
       <div class="controls">
-        <button class="ghost" id="exportBtn" disabled>Export Key Points</button>
+        <button class="ghost" id="exportBtn">Export</button>
         <button class="ghost" id="settingsBtn">Settings</button>
       </div>
     </footer>
 
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal" style="display: none;">
+      <div class="modal-overlay" id="exportModalOverlay"></div>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2>Export Data</h2>
+          <button class="modal-close" id="exportModalClose" title="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="export-section">
+            <h3>Select sections to export:</h3>
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportSummary" value="summary">
+                <span>Summary</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportMethodology" value="methodology">
+                <span>Methodology Assessment</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportSimplification" value="simplification">
+                <span>Language Simplification</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportTranslation" value="translation">
+                <span>Translation</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="exportChat" value="chat">
+                <span>Chat History</span>
+              </label>
+              <label class="checkbox-label checkbox-all">
+                <input type="checkbox" id="exportAll">
+                <span><strong>Select All</strong></span>
+              </label>
+            </div>
+          </div>
+          <div class="export-section">
+            <h3>Choose format:</h3>
+            <div class="format-buttons">
+              <button class="format-btn" id="exportJson" data-format="json">JSON</button>
+              <button class="format-btn" id="exportMarkdown" data-format="md">Markdown</button>
+              <button class="format-btn" id="exportPdf" data-format="pdf" disabled title="Coming soon">PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./lib/marked.min.js"></script>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

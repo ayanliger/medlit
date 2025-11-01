@@ -60,7 +60,7 @@ document.getElementById("settingsBtn").addEventListener("click", () => {
 });
 
 exportBtn.addEventListener("click", () => {
-  void handleExport();
+  openExportModal();
 });
 
 chatForm.addEventListener("submit", (e) => {
@@ -82,6 +82,36 @@ document.getElementById("clearSimplifierBtn").addEventListener("click", () => {
 
 document.getElementById("clearTranslationBtn").addEventListener("click", () => {
   handleClearTranslation();
+});
+
+// Export modal event listeners
+const exportModal = document.getElementById("exportModal");
+const exportModalClose = document.getElementById("exportModalClose");
+const exportModalOverlay = document.getElementById("exportModalOverlay");
+const exportAllCheckbox = document.getElementById("exportAll");
+const sectionCheckboxes = [
+  document.getElementById("exportSummary"),
+  document.getElementById("exportMethodology"),
+  document.getElementById("exportSimplification"),
+  document.getElementById("exportTranslation"),
+  document.getElementById("exportChat")
+];
+
+exportModalClose.addEventListener("click", closeExportModal);
+exportModalOverlay.addEventListener("click", closeExportModal);
+
+exportAllCheckbox.addEventListener("change", (e) => {
+  sectionCheckboxes.forEach(cb => {
+    cb.checked = e.target.checked;
+  });
+});
+
+document.getElementById("exportJson").addEventListener("click", () => {
+  void handleExportFormat("json");
+});
+
+document.getElementById("exportMarkdown").addEventListener("click", () => {
+  void handleExportFormat("md");
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -169,7 +199,6 @@ async function processSummaryFromSelection(text) {
     // Enable chat after summary is generated
     enableChat(summary, documentSnapshot);
     
-    exportBtn.disabled = false;
     updateStatus("Summary from selection ready.");
   } catch (error) {
     console.error("MedLit summary from selection error", error);
@@ -216,7 +245,6 @@ async function handleGenerateSummary({ forceRefresh }) {
       picoOutputEl.insertAdjacentHTML('afterbegin', pdfBanner);
     }
     
-    exportBtn.disabled = false;
     updateStatus(summary.source === "fallback" ? "Summary ready (fallback mode)." : "Summary ready.");
   } catch (error) {
     console.error("MedLit summary error", error);
@@ -308,60 +336,6 @@ async function processTranslation(text, detectedLanguage) {
   }
 }
 
-async function handleExport() {
-  if (!appState.summary?.data) {
-    updateStatus("Generate a summary first to enable exports.");
-    renderInfo(picoOutputEl, "Run a summary before exporting key points.", "info");
-    return;
-  }
-
-  if (isBusy("export")) {
-    return;
-  }
-
-  setBusy("export", true);
-  updateStatus("Preparing export preview…");
-
-  try {
-    const documentSnapshot = await getDocumentSnapshot(false);
-    const summaryMarkdown = summaryToMarkdown(appState.summary.data);
-    const exportPayload = await buildKeyPointsExport(
-      summaryMarkdown,
-      documentSnapshot?.article?.textContent ?? ""
-    );
-
-    const exportData = {
-      generatedAt: exportPayload.generatedAt,
-      source: exportPayload.source,
-      keyPoints: exportPayload.data,
-      summaryMarkdown,
-      meta: documentSnapshot?.meta ?? {}
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: "application/json"
-    });
-    const url = URL.createObjectURL(blob);
-    const filename = createExportFilename(documentSnapshot?.meta?.title);
-
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
-
-    updateStatus("Export downloaded.");
-  } catch (error) {
-    console.error("MedLit export error", error);
-    renderError(picoOutputEl, error.message || "Unable to build export.");
-    updateStatus("Export failed");
-  } finally {
-    setBusy("export", false);
-  }
-}
-
-
-
 async function getDocumentSnapshot(forceRefresh) {
   if (!forceRefresh && appState.lastDocument) {
     return appState.lastDocument;
@@ -438,16 +412,6 @@ function summaryToMarkdown(data) {
   );
 
   return lines.join("\n");
-}
-
-function createExportFilename(title = "") {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40) || "medlit-paper";
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `${slug}-${timestamp}.json`;
 }
 
 // Chat functions
@@ -605,7 +569,6 @@ function handleClearSummary() {
     <p><strong>Option 1:</strong> Click "Generate Study Summary" above to analyze the full page.</p>
     <p><strong>Option 2 (Recommended for PDFs):</strong> Highlight text, right-click → "Summarize from selection".</p>
   `;
-  exportBtn.disabled = true;
   updateStatus("Summary cleared.");
 }
 
@@ -630,6 +593,212 @@ function handleClearTranslation() {
   updateStatus("Translations cleared.");
 }
 
+// Export modal functions
+
+function openExportModal() {
+  exportModal.style.display = "flex";
+}
+
+function closeExportModal() {
+  exportModal.style.display = "none";
+}
+
+async function handleExportFormat(format) {
+  const selectedSections = [];
+  
+  sectionCheckboxes.forEach(cb => {
+    if (cb.checked) {
+      selectedSections.push(cb.value);
+    }
+  });
+  
+  if (selectedSections.length === 0) {
+    updateStatus("Please select at least one section to export.");
+    return;
+  }
+  
+  try {
+    updateStatus("Preparing export...");
+    
+    if (format === "json") {
+      await exportAsJson(selectedSections);
+    } else if (format === "md") {
+      await exportAsMarkdown(selectedSections);
+    }
+    
+    updateStatus(`Exported ${selectedSections.length} section(s) as ${format.toUpperCase()}.`);
+    closeExportModal();
+  } catch (error) {
+    console.error("Export error:", error);
+    updateStatus("Export failed: " + error.message);
+  }
+}
+
+async function exportAsJson(sections) {
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    format: "json",
+    sections: {}
+  };
+  
+  for (const section of sections) {
+    switch (section) {
+      case "summary":
+        if (appState.summary?.data) {
+          exportData.sections.summary = {
+            ...appState.summary.data,
+            meta: appState.lastDocument?.meta || {}
+          };
+        }
+        break;
+      case "methodology":
+        if (appState.methodology?.data) {
+          exportData.sections.methodology = appState.methodology.data;
+        }
+        break;
+      case "simplification":
+        if (appState.simplifications.length > 0) {
+          exportData.sections.simplifications = appState.simplifications.map(s => s.data);
+        }
+        break;
+      case "translation":
+        if (appState.translations.length > 0) {
+          exportData.sections.translations = appState.translations.map(t => t.data);
+        }
+        break;
+      case "chat":
+        if (appState.chatHistory.length > 0) {
+          exportData.sections.chatHistory = appState.chatHistory;
+        }
+        break;
+    }
+  }
+  
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+    type: "application/json"
+  });
+  downloadFile(blob, `medlit-export-${Date.now()}.json`);
+}
+
+async function exportAsMarkdown(sections) {
+  let markdown = `# MedLit Export\n\n`;
+  markdown += `**Exported:** ${new Date().toLocaleString()}\n\n`;
+  markdown += `---\n\n`;
+  
+  for (const section of sections) {
+    switch (section) {
+      case "summary":
+        if (appState.summary?.data) {
+          markdown += `## Study Summary\n\n`;
+          markdown += summaryToMarkdown(appState.summary.data);
+          markdown += `\n\n---\n\n`;
+        }
+        break;
+      case "methodology":
+        if (appState.methodology?.data) {
+          markdown += `## Methodology Assessment\n\n`;
+          markdown += methodologyToMarkdown(appState.methodology.data);
+          markdown += `\n\n---\n\n`;
+        }
+        break;
+      case "simplification":
+        if (appState.simplifications.length > 0) {
+          markdown += `## Language Simplifications\n\n`;
+          appState.simplifications.forEach((s, i) => {
+            markdown += `### Simplification ${i + 1}\n\n`;
+            markdown += `**Original Tone:** ${s.data.tone || 'N/A'}\n`;
+            markdown += `**Original Length:** ${s.data.length || 'N/A'}\n\n`;
+            markdown += `${s.data.plainEnglish || ''}\n\n`;
+            if (s.data.keyTerms?.length) {
+              markdown += `**Key Terms:**\n`;
+              s.data.keyTerms.forEach(({term, definition}) => {
+                markdown += `- **${term}:** ${definition}\n`;
+              });
+              markdown += `\n`;
+            }
+          });
+          markdown += `---\n\n`;
+        }
+        break;
+      case "translation":
+        if (appState.translations.length > 0) {
+          markdown += `## Translations\n\n`;
+          appState.translations.forEach((t, i) => {
+            markdown += `### Translation ${i + 1}\n\n`;
+            markdown += `**Language:** ${t.data.detectedLanguage || 'Unknown'}\n\n`;
+            markdown += `${t.data.translatedText || ''}\n\n`;
+          });
+          markdown += `---\n\n`;
+        }
+        break;
+      case "chat":
+        if (appState.chatHistory.length > 0) {
+          markdown += `## Chat History\n\n`;
+          appState.chatHistory.forEach((msg) => {
+            const role = msg.role === "user" ? "**You**" : "**Assistant**";
+            markdown += `${role}: ${msg.content}\n\n`;
+          });
+          markdown += `---\n\n`;
+        }
+        break;
+    }
+  }
+  
+  const blob = new Blob([markdown], { type: "text/markdown" });
+  downloadFile(blob, `medlit-export-${Date.now()}.md`);
+}
+
+function methodologyToMarkdown(data) {
+  let md = `**Overall Quality Score:** ${data.overallQualityScore || 0}/100\n\n`;
+  
+  if (data.researchQuestionClarity) {
+    md += `### Research Question Clarity\n`;
+    md += `- **Score:** ${data.researchQuestionClarity.score || 0}/5\n`;
+    if (data.researchQuestionClarity.strengths?.length) {
+      md += `- **Strengths:** ${data.researchQuestionClarity.strengths.join(", ")}\n`;
+    }
+    if (data.researchQuestionClarity.concerns?.length) {
+      md += `- **Concerns:** ${data.researchQuestionClarity.concerns.join(", ")}\n`;
+    }
+    md += `\n`;
+  }
+  
+  if (data.sampleSizePower) {
+    md += `### Sample Size & Power\n`;
+    md += `- **Score:** ${data.sampleSizePower.score || 0}/5\n`;
+    if (data.sampleSizePower.calculated) {
+      md += `- **Calculated Size:** ${data.sampleSizePower.calculated}\n`;
+    }
+    if (data.sampleSizePower.actual) {
+      md += `- **Actual Size:** ${data.sampleSizePower.actual}\n`;
+    }
+    md += `\n`;
+  }
+  
+  if (data.keyLimitations?.length) {
+    md += `### Key Limitations\n`;
+    data.keyLimitations.forEach(lim => {
+      md += `- ${lim}\n`;
+    });
+    md += `\n`;
+  }
+  
+  if (data.recommendation) {
+    md += `**Recommendation:** ${data.recommendation}\n`;
+  }
+  
+  return md;
+}
+
+function downloadFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function addChatMessage(role, content, isLoading = false, isError = false) {
   const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const messageEl = document.createElement("div");
@@ -650,7 +819,13 @@ function addChatMessage(role, content, isLoading = false, isError = false) {
   
   const text = document.createElement("div");
   text.className = "chat-message-text";
-  text.textContent = content;
+  
+  // Render markdown for assistant messages, plain text for user messages
+  if (role === "assistant" && !isLoading) {
+    text.innerHTML = marked.parse(content);
+  } else {
+    text.textContent = content;
+  }
   
   messageEl.appendChild(label);
   messageEl.appendChild(text);
