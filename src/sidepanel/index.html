@@ -20,14 +20,14 @@
         <header class="section-header">
           <h2>Structured Summary</h2>
           <div class="section-actions">
-            <button class="ghost" id="refreshSummaryBtn" title="Re-run analysis">
-              Refresh
+            <button class="ghost" id="clearSummaryBtn" title="Clear summary">
+              Clear
             </button>
           </div>
         </header>
         <div id="picoOutput" class="section-body empty-state">
           <p><strong>Option 1:</strong> Click "Generate Study Summary" above to analyze the full page.</p>
-          <p><strong>Option 2:</strong> Highlight text, right-click → "MedLit: Generate Summary from Selection".</p>
+          <p><strong>Option 2 (Recommended for PDFs):</strong> Highlight text, right-click → "MedLit: Generate Summary from Selection".</p>
         </div>
       </section>
 
@@ -63,6 +63,11 @@
       <section class="panel-section">
         <header class="section-header">
           <h2>Methodology Assessment</h2>
+          <div class="section-actions">
+            <button class="ghost" id="clearMethodologyBtn" title="Clear assessment">
+              Clear
+            </button>
+          </div>
         </header>
         <div id="methodologyOutput" class="section-body empty-state">
           <p>Highlight a methods section in the paper, right-click → "MedLit: Scan Methodology".</p>
@@ -89,6 +94,9 @@
                 <option value="longer">Longer</option>
               </select>
             </label>
+            <button class="ghost" id="clearSimplifierBtn" title="Clear simplifications">
+              Clear
+            </button>
           </div>
         </header>
         <div id="simplifierOutput" class="section-body empty-state">
@@ -99,6 +107,11 @@
       <section class="panel-section">
         <header class="section-header">
           <h2>Translation</h2>
+          <div class="section-actions">
+            <button class="ghost" id="clearTranslationBtn" title="Clear translations">
+              Clear
+            </button>
+          </div>
         </header>
         <div id="translationOutput" class="section-body empty-state">
           <p>Translate non-English text to English using the "MedLit: Translate Abstract" context menu option.</p>

@@ -43,11 +43,11 @@ const appState = {
 const busyFlags = new Set();
 
 document.getElementById("generateSummaryBtn").addEventListener("click", () => {
-  void handleGenerateSummary({ forceRefresh: false });
+  void handleGenerateSummary({ forceRefresh: true });
 });
 
-document.getElementById("refreshSummaryBtn").addEventListener("click", () => {
-  void handleGenerateSummary({ forceRefresh: true });
+document.getElementById("clearSummaryBtn").addEventListener("click", () => {
+  handleClearSummary();
 });
 
 document.getElementById("settingsBtn").addEventListener("click", () => {
@@ -70,6 +70,18 @@ chatForm.addEventListener("submit", (e) => {
 
 clearChatBtn.addEventListener("click", () => {
   handleClearChat();
+});
+
+document.getElementById("clearMethodologyBtn").addEventListener("click", () => {
+  handleClearMethodology();
+});
+
+document.getElementById("clearSimplifierBtn").addEventListener("click", () => {
+  handleClearSimplifier();
+});
+
+document.getElementById("clearTranslationBtn").addEventListener("click", () => {
+  handleClearTranslation();
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -574,8 +586,48 @@ async function handleChatSubmit() {
 
 function handleClearChat() {
   appState.chatHistory = [];
-  chatMessagesEl.innerHTML = '<p class="empty-text" style="text-align: center; padding: 1em 0;">Ask questions about the summarized content.</p>';
+  appState.chatContext = null;
+  chatInput.disabled = true;
+  chatSendBtn.disabled = true;
+  chatMessagesEl.classList.add("empty-state");
+  chatMessagesEl.innerHTML = `
+    <p><strong>Option 1:</strong> Generate a summary first, then ask questions about the study.</p>
+    <p><strong>Option 2:</strong> Highlight text, right-click → "MedLit: Chat with Selection" to ask about specific content.</p>
+  `;
   updateStatus("Chat cleared.");
+}
+
+function handleClearSummary() {
+  appState.summary = null;
+  appState.lastDocument = null;
+  picoOutputEl.classList.add("empty-state");
+  picoOutputEl.innerHTML = `
+    <p><strong>Option 1:</strong> Click "Generate Study Summary" above to analyze the full page.</p>
+    <p><strong>Option 2 (Recommended for PDFs):</strong> Highlight text, right-click → "MedLit: Generate Summary from Selection".</p>
+  `;
+  exportBtn.disabled = true;
+  updateStatus("Summary cleared.");
+}
+
+function handleClearMethodology() {
+  appState.methodology = null;
+  methodologyOutputEl.classList.add("empty-state");
+  methodologyOutputEl.innerHTML = `<p>Highlight a methods section in the paper, right-click → "MedLit: Scan Methodology".</p>`;
+  updateStatus("Methodology assessment cleared.");
+}
+
+function handleClearSimplifier() {
+  appState.simplifications = [];
+  simplifierOutputEl.classList.add("empty-state");
+  simplifierOutputEl.innerHTML = `<p>Highlight complex medical or technical text, then select "MedLit: Simplify Language" from the context menu.</p>`;
+  updateStatus("Simplifications cleared.");
+}
+
+function handleClearTranslation() {
+  appState.translations = [];
+  translationOutputEl.classList.add("empty-state");
+  translationOutputEl.innerHTML = `<p>Translate non-English text to English using the "MedLit: Translate Abstract" context menu option.</p>`;
+  updateStatus("Translations cleared.");
 }
 
 function addChatMessage(role, content, isLoading = false, isError = false) {
