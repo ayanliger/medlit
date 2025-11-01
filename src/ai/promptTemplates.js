@@ -1,6 +1,16 @@
+/**
+ * Maximum prompt length in characters before truncation
+ * @constant {number}
+ */
 const MAX_PROMPT_LENGTH = 12000;
 
-// Study-type classification prompt (framework-aware)
+/**
+ * Builds a study type classification prompt for Chrome AI to identify study design and reporting framework
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @param {Object} documentSnapshot.meta - Metadata (title, URL, description)
+ * @param {Object} documentSnapshot.article - Article content (textContent, htmlContent)
+ * @returns {string} Formatted prompt for study type classification
+ */
 export function buildStudyTypePrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -87,6 +97,11 @@ Keyword indicators (use as secondary evidence only):
 `.trim();
 }
 
+/**
+ * Builds a structured summary extraction prompt for general clinical studies
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for PICO-style summary extraction
+ */
 export function buildStructuredSummaryPrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -162,7 +177,11 @@ ONLY return valid JSON. No Markdown, no explanations.
 `.trim();
 }
 
-// PRISMA-aligned summary for Systematic Reviews / Meta-Analyses
+/**
+ * Builds a PRISMA-aligned extraction prompt for Systematic Reviews and Meta-Analyses
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for PRISMA framework extraction
+ */
 export function buildSystematicReviewPrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -207,7 +226,11 @@ Rules:
 `.trim();
 }
 
-// STARD-aligned summary for Diagnostic Accuracy studies
+/**
+ * Builds a STARD-aligned extraction prompt for Diagnostic Accuracy studies
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for STARD framework extraction
+ */
 export function buildDiagnosticAccuracyPrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -250,7 +273,11 @@ Rules:
 `.trim();
 }
 
-// STROBE-aligned summary for observational studies
+/**
+ * Builds a STROBE-aligned extraction prompt for observational studies (cohort, case-control, cross-sectional)
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for STROBE framework extraction
+ */
 export function buildObservationalPrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -290,7 +317,11 @@ Rules:
 `.trim();
 }
 
-// CARE-aligned summary for Case Reports / Case Series
+/**
+ * Builds a CARE-aligned extraction prompt for Case Reports and Case Series
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for CARE framework extraction
+ */
 export function buildCaseReportPrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -333,7 +364,11 @@ Rules:
 `.trim();
 }
 
-// COREQ-aligned summary for Qualitative Research
+/**
+ * Builds a COREQ-aligned extraction prompt for Qualitative Research studies
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for COREQ framework extraction
+ */
 export function buildQualitativePrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -378,7 +413,11 @@ Rules:
 `.trim();
 }
 
-// Basic Science / Bench Research (no clinical framework)
+/**
+ * Builds an extraction prompt for Basic Science and bench research studies
+ * @param {Object} documentSnapshot - Document snapshot containing meta and article content
+ * @returns {string} Formatted prompt for basic science extraction (no clinical framework)
+ */
 export function buildBasicSciencePrompt(documentSnapshot) {
   const { meta = {}, article = {} } = documentSnapshot ?? {};
   const context = createContextBlock(article.textContent);
@@ -421,6 +460,13 @@ Rules:
 `.trim();
 }
 
+/**
+ * Builds a methodology assessment prompt applying Cochrane Risk of Bias framework
+ * @param {Object} params - Parameters object
+ * @param {string} params.methodsText - The methods section text to assess
+ * @param {string} params.fullText - Full paper text for additional context
+ * @returns {string} Formatted prompt for methodology quality assessment
+ */
 export function buildMethodologyPrompt({ methodsText, fullText }) {
   const methodsContext = createContextBlock(methodsText);
   const fullPaperContext = createContextBlock(fullText);
@@ -509,6 +555,11 @@ ONLY JSON, no comments.
 `.trim();
 }
 
+/**
+ * Builds a text simplification prompt for medical jargon
+ * @param {string} text - The complex medical text to simplify
+ * @returns {string} Formatted prompt for plain English simplification
+ */
 export function buildSimplificationPrompt(text) {
   const context = createContextBlock(text);
 
@@ -534,6 +585,12 @@ IMPORTANT:
 `.trim();
 }
 
+/**
+ * Builds a key points extraction prompt for systematic review exports
+ * @param {string} summaryMarkdown - The summary in Markdown format
+ * @param {string} fullText - Full paper text for comprehensive analysis
+ * @returns {string} Formatted prompt for key points extraction
+ */
 export function buildKeyPointsPrompt(summaryMarkdown, fullText) {
   const summaryContext = createContextBlock(summaryMarkdown);
   const fullTextContext = createContextBlock(fullText);
@@ -563,6 +620,12 @@ IMPORTANT:
 `.trim();
 }
 
+/**
+ * Creates a context block from raw text with whitespace normalization
+ * @param {string} [rawText=""] - The raw text to process
+ * @returns {string} Processed and truncated context block
+ * @private
+ */
 function createContextBlock(rawText = "") {
   if (!rawText) {
     return "[No additional context supplied]";
@@ -570,6 +633,12 @@ function createContextBlock(rawText = "") {
   return truncateText(rawText.replace(/\s+/g, " ").trim());
 }
 
+/**
+ * Creates a metadata block from document metadata
+ * @param {Object} [meta={}] - Metadata object containing title, URL, description
+ * @returns {string} Formatted metadata block for prompts
+ * @private
+ */
 function createMetadataBlock(meta = {}) {
   const items = [
     meta.title ? `Title: ${meta.title}` : "",
@@ -584,6 +653,12 @@ function createMetadataBlock(meta = {}) {
   return `PAPER METADATA:\n${items.join("\n")}`;
 }
 
+/**
+ * Truncates text to maximum prompt length
+ * @param {string} text - The text to truncate
+ * @returns {string} Truncated text with ellipsis if needed
+ * @private
+ */
 function truncateText(text) {
   if (text.length <= MAX_PROMPT_LENGTH) {
     return text;

@@ -773,12 +773,12 @@ function inferFromReasons(reasonsText) {
 /**
  * Creates a Chrome built-in AI LanguageModel session with proper configuration
  * @param {Object} options - Session configuration options
- * @param {Array<Object>} options.initialPrompts - Array of initial messages with role and content
- * @param {string} [options.systemPrompt] - System prompt (will be converted to initialPrompts format)
- * @param {number} [options.temperature] - Temperature parameter for response randomness
+ * @param {Array<Object>} options.initialPrompts - Array of initial messages with role and content (required)
+ * @param {number} [options.temperature] - Temperature parameter for response randomness (0.0-1.0)
  * @param {number} [options.topK] - Top-K parameter for token sampling
- * @param {string} [language="en"] - Expected input/output language (BCP 47 code)
- * @param {Function} [onProgress] - Optional callback for download progress: ({ loaded, total, percentage }) => void
+ * @param {string} [language="en"] - Expected input/output language (BCP 47 code, e.g., "en", "es", "fr")
+ * @param {Function} [onProgress] - Optional callback for model download progress monitoring
+ *                                   Receives object: { loaded: number, total: number, percentage: number }
  * @returns {Promise<Object|null>} Language model session or null if unavailable
  */
 async function createLanguageModelSession(options, language = "en", onProgress = null) {
@@ -802,17 +802,12 @@ async function createLanguageModelSession(options, language = "en", onProgress =
       sessionOptions.topK = options.topK;
     }
     
-    // Use initialPrompts array per official API documentation
+    // Use initialPrompts array per official Chrome AI API documentation
     if (options.initialPrompts) {
       sessionOptions.initialPrompts = options.initialPrompts;
-    } else if (options.systemPrompt) {
-      // Convert systemPrompt to initialPrompts format
-      sessionOptions.initialPrompts = [
-        { role: "system", content: options.systemPrompt }
-      ];
     }
     
-    // Add download progress monitoring for better UX
+    // Add download progress monitoring for better UX during first-time model download (~2GB)
     if (onProgress) {
       sessionOptions.monitor = (m) => {
         m.addEventListener('downloadprogress', (e) => {
@@ -855,13 +850,22 @@ function destroySession(session) {
 /**
  * Public wrapper for creating AI sessions (exported for use in other modules)
  * @param {Object} options - Session options
- * @param {string} [options.systemPrompt] - System prompt for the session
- * @param {number} [options.temperature] - Temperature parameter
- * @param {number} [options.topK] - Top-K parameter
+ * @param {Array<Object>} [options.initialPrompts] - Array of initial messages with role and content
+ * @param {string} [options.systemPrompt] - System prompt (legacy - will be converted to initialPrompts)
+ * @param {number} [options.temperature] - Temperature parameter (0.0-1.0)
+ * @param {number} [options.topK] - Top-K parameter for token sampling
  * @returns {Promise<Object|null>} Language model session or null if unavailable
  */
 export async function createAISession(options) {
-  return createLanguageModelSession(options, "en");
+  // Support legacy systemPrompt parameter for backwards compatibility
+  const sessionOptions = { ...options };
+  if (options.systemPrompt && !options.initialPrompts) {
+    sessionOptions.initialPrompts = [
+      { role: "system", content: options.systemPrompt }
+    ];
+    delete sessionOptions.systemPrompt;
+  }
+  return createLanguageModelSession(sessionOptions, "en");
 }
 
 function safeJsonParse(payload) {
