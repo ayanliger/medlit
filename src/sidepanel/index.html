@@ -177,6 +177,96 @@
       </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display: none;">
+      <div class="modal-overlay" id="settingsModalOverlay"></div>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button class="modal-close" id="settingsModalClose" title="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-section">
+            <h3>Theme</h3>
+            <p class="settings-description">Choose a color scheme for the sidebar</p>
+            <div class="settings-group">
+              <label class="settings-radio-label">
+                <input type="radio" name="theme" value="light" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-icon">☀️</span>
+                  <span class="settings-radio-text">Light</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="theme" value="dark" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-icon">🌙</span>
+                  <span class="settings-radio-text">Dark</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="theme" value="high-contrast" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-icon">◐</span>
+                  <span class="settings-radio-text">High Contrast</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h3>Font Family</h3>
+            <p class="settings-description">Choose a font for better readability</p>
+            <div class="settings-group">
+              <label class="settings-radio-label">
+                <input type="radio" name="font" value="sans-serif" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-text" style="font-family: 'Inter', system-ui, sans-serif;">Sans Serif</span>
+                  <span class="settings-radio-subtitle">Modern & clean</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="font" value="serif" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-text" style="font-family: Georgia, serif;">Serif</span>
+                  <span class="settings-radio-subtitle">Traditional & formal</span>
+                </div>
+              </label>
+              <label class="settings-radio-label">
+                <input type="radio" name="font" value="dyslexic" class="settings-radio">
+                <div class="settings-radio-card">
+                  <span class="settings-radio-text" style="font-family: 'Comic Sans MS', sans-serif;">Dyslexic-friendly</span>
+                  <span class="settings-radio-subtitle">Easier for some readers</span>
+                </div>
+              </label>
+            </div>
+            
+            <!-- Dyslexic font customization sliders -->
+            <div id="dyslexicOptions" class="dyslexic-options" style="display: none;">
+              <div class="slider-group">
+                <label class="slider-label">
+                  <span class="slider-label-text">Letter Spacing</span>
+                  <span class="slider-value" id="letterSpacingValue">0.02em</span>
+                </label>
+                <input type="range" id="letterSpacingSlider" class="slider" min="0" max="0.1" step="0.01" value="0.02">
+              </div>
+              <div class="slider-group">
+                <label class="slider-label">
+                  <span class="slider-label-text">Font Size</span>
+                  <span class="slider-value" id="fontSizeValue">14px</span>
+                </label>
+                <input type="range" id="fontSizeSlider" class="slider" min="12" max="18" step="1" value="14">
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-footer">
+            <button class="primary-action" id="saveSettings">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="./lib/marked.min.js"></script>
     <script type="module" src="./main.js"></script>
   </body>

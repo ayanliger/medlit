@@ -51,12 +51,7 @@ document.getElementById("clearSummaryBtn").addEventListener("click", () => {
 });
 
 document.getElementById("settingsBtn").addEventListener("click", () => {
-  updateStatus("Settings coming soon.");
-  renderInfo(
-    methodologyOutputEl,
-    "Settings will let you adjust prompt temperature, export defaults, and privacy controls.",
-    "info"
-  );
+  openSettingsModal();
 });
 
 exportBtn.addEventListener("click", () => {
@@ -112,6 +107,44 @@ document.getElementById("exportJson").addEventListener("click", () => {
 
 document.getElementById("exportMarkdown").addEventListener("click", () => {
   void handleExportFormat("md");
+});
+
+// Settings modal event listeners
+const settingsModal = document.getElementById("settingsModal");
+const settingsModalClose = document.getElementById("settingsModalClose");
+const settingsModalOverlay = document.getElementById("settingsModalOverlay");
+const saveSettingsBtn = document.getElementById("saveSettings");
+const dyslexicOptions = document.getElementById("dyslexicOptions");
+const letterSpacingSlider = document.getElementById("letterSpacingSlider");
+const letterSpacingValue = document.getElementById("letterSpacingValue");
+const fontSizeSlider = document.getElementById("fontSizeSlider");
+const fontSizeValue = document.getElementById("fontSizeValue");
+
+settingsModalClose.addEventListener("click", closeSettingsModal);
+settingsModalOverlay.addEventListener("click", closeSettingsModal);
+saveSettingsBtn.addEventListener("click", () => {
+  void saveSettings();
+});
+
+// Show/hide dyslexic options based on font selection
+document.querySelectorAll('input[name="font"]').forEach(radio => {
+  radio.addEventListener("change", (e) => {
+    if (e.target.value === "dyslexic") {
+      dyslexicOptions.style.display = "flex";
+    } else {
+      dyslexicOptions.style.display = "none";
+    }
+  });
+});
+
+// Update slider values in real-time
+letterSpacingSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value).toFixed(2);
+  letterSpacingValue.textContent = `${value}em`;
+});
+
+fontSizeSlider.addEventListener("input", (e) => {
+  fontSizeValue.textContent = `${e.target.value}px`;
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -923,3 +956,95 @@ Provide clear, accurate answers based on the content above. Reference specific d
     }
   }
 }
+
+// Settings modal functions
+
+function openSettingsModal() {
+  loadSettings();
+  settingsModal.style.display = "flex";
+}
+
+function closeSettingsModal() {
+  settingsModal.style.display = "none";
+}
+
+async function loadSettings() {
+  try {
+    const result = await chrome.storage.local.get(["theme", "font", "dyslexicLetterSpacing", "dyslexicFontSize"]);
+    const theme = result.theme || "light";
+    const font = result.font || "sans-serif";
+    const letterSpacing = result.dyslexicLetterSpacing || 0.02;
+    const fontSize = result.dyslexicFontSize || 14;
+    
+    // Set radio button states
+    const themeRadio = document.querySelector(`input[name="theme"][value="${theme}"]`);
+    const fontRadio = document.querySelector(`input[name="font"][value="${font}"]`);
+    
+    if (themeRadio) themeRadio.checked = true;
+    if (fontRadio) fontRadio.checked = true;
+    
+    // Show dyslexic options if dyslexic font is selected
+    if (font === "dyslexic") {
+      dyslexicOptions.style.display = "flex";
+    }
+    
+    // Set slider values
+    letterSpacingSlider.value = letterSpacing;
+    letterSpacingValue.textContent = `${letterSpacing.toFixed(2)}em`;
+    fontSizeSlider.value = fontSize;
+    fontSizeValue.textContent = `${fontSize}px`;
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  }
+}
+
+async function saveSettings() {
+  try {
+    const selectedTheme = document.querySelector('input[name="theme"]:checked')?.value || "light";
+    const selectedFont = document.querySelector('input[name="font"]:checked')?.value || "sans-serif";
+    const letterSpacing = parseFloat(letterSpacingSlider.value);
+    const fontSize = parseInt(fontSizeSlider.value);
+    
+    await chrome.storage.local.set({
+      theme: selectedTheme,
+      font: selectedFont,
+      dyslexicLetterSpacing: letterSpacing,
+      dyslexicFontSize: fontSize
+    });
+    
+    applySettings(selectedTheme, selectedFont, letterSpacing, fontSize);
+    updateStatus("Settings saved.");
+    closeSettingsModal();
+  } catch (error) {
+    console.error("Error saving settings:", error);
+    updateStatus("Failed to save settings.");
+  }
+}
+
+function applySettings(theme, font, letterSpacing = 0.02, fontSize = 14) {
+  // Apply theme
+  document.body.setAttribute("data-theme", theme);
+  
+  // Apply font
+  document.body.setAttribute("data-font", font);
+  
+  // Apply dyslexic font customization
+  if (font === "dyslexic") {
+    document.documentElement.style.setProperty("--dyslexic-letter-spacing", `${letterSpacing}em`);
+    document.documentElement.style.setProperty("--dyslexic-font-size", `${fontSize}px`);
+  }
+}
+
+// Load settings on page load
+(async function initSettings() {
+  try {
+    const result = await chrome.storage.local.get(["theme", "font", "dyslexicLetterSpacing", "dyslexicFontSize"]);
+    const theme = result.theme || "light";
+    const font = result.font || "sans-serif";
+    const letterSpacing = result.dyslexicLetterSpacing || 0.02;
+    const fontSize = result.dyslexicFontSize || 14;
+    applySettings(theme, font, letterSpacing, fontSize);
+  } catch (error) {
+    console.error("Error initializing settings:", error);
+  }
+})();
