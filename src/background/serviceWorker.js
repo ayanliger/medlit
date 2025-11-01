@@ -118,31 +118,31 @@ async function setupContextMenus() {
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.summarize,
-    title: "MedLit: Generate Summary from Selection",
+    title: "Summarize from selection",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.methodology,
-    title: "MedLit: Scan Methodology",
+    title: "Assess methodology from selection",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.simplify,
-    title: "MedLit: Simplify Language",
+    title: "Simplify language from selection",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.translate,
-    title: "MedLit: Translate Abstract",
+    title: "Translate selection to English",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
     id: CONTEXT_MENUS.chat,
-    title: "MedLit: Chat with Selection",
+    title: "Chat with selection",
     contexts: ["selection"]
   });
 }

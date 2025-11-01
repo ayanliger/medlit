@@ -592,7 +592,7 @@ function handleClearChat() {
   chatMessagesEl.classList.add("empty-state");
   chatMessagesEl.innerHTML = `
     <p><strong>Option 1:</strong> Generate a summary first, then ask questions about the study.</p>
-    <p><strong>Option 2:</strong> Highlight text, right-click → "MedLit: Chat with Selection" to ask about specific content.</p>
+    <p><strong>Option 2:</strong> Highlight text, right-click → "Chat with selection" to ask about specific content.</p>
   `;
   updateStatus("Chat cleared.");
 }
@@ -603,7 +603,7 @@ function handleClearSummary() {
   picoOutputEl.classList.add("empty-state");
   picoOutputEl.innerHTML = `
     <p><strong>Option 1:</strong> Click "Generate Study Summary" above to analyze the full page.</p>
-    <p><strong>Option 2 (Recommended for PDFs):</strong> Highlight text, right-click → "MedLit: Generate Summary from Selection".</p>
+    <p><strong>Option 2 (Recommended for PDFs):</strong> Highlight text, right-click → "Summarize from selection".</p>
   `;
   exportBtn.disabled = true;
   updateStatus("Summary cleared.");
@@ -612,21 +612,21 @@ function handleClearSummary() {
 function handleClearMethodology() {
   appState.methodology = null;
   methodologyOutputEl.classList.add("empty-state");
-  methodologyOutputEl.innerHTML = `<p>Highlight a methods section in the paper, right-click → "MedLit: Scan Methodology".</p>`;
+  methodologyOutputEl.innerHTML = `<p>Highlight a methods section in the paper, right-click → "Assess methodology from selection".</p>`;
   updateStatus("Methodology assessment cleared.");
 }
 
 function handleClearSimplifier() {
   appState.simplifications = [];
   simplifierOutputEl.classList.add("empty-state");
-  simplifierOutputEl.innerHTML = `<p>Highlight complex medical or technical text, then select "MedLit: Simplify Language" from the context menu.</p>`;
+  simplifierOutputEl.innerHTML = `<p>Highlight complex medical or technical text, then select "Simplify language from selection" from the context menu.</p>`;
   updateStatus("Simplifications cleared.");
 }
 
 function handleClearTranslation() {
   appState.translations = [];
   translationOutputEl.classList.add("empty-state");
-  translationOutputEl.innerHTML = `<p>Translate non-English text to English using the "MedLit: Translate Abstract" context menu option.</p>`;
+  translationOutputEl.innerHTML = `<p>Translate non-English text to English using the "Translate selection to English" context menu option.</p>`;
   updateStatus("Translations cleared.");
 }
 
