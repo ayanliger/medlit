@@ -1,230 +1,158 @@
+<div align="center">
+
+<img src="icons/icon-128.png" alt="MedLit logo" width="96" />
+
 # MedLit
 
-MedLit is a Google Chrome Extension developed for accelerated medical literature review using Chrome's built-in AI capabilities. It is able to extract structured study summaries, assess methodology quality, simplify medical technical language, translate medical texts and provide a chat interface with Google's Gemini Nano LLM, all available on-device with proper offline support and privacy preservation.
-  
-**APIs Used:** Prompt API, Rewriter API, Translator API
+**On-device AI assistant for medical literature review, built entirely on Chrome's built-in AI.**
 
-**Model:** Gemini Nano (on-device)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Chrome 138+](https://img.shields.io/badge/Chrome-138%2B-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/ai/built-in)
+[![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue)](manifest.json)
+[![Gemini Nano](https://img.shields.io/badge/Gemini%20Nano-on--device-8E75B2)](https://developer.chrome.com/docs/ai/built-in)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES6%20Modules-F7DF1E?logo=javascript&logoColor=black)](src/)
+[![Devpost](https://img.shields.io/badge/Devpost-MedLit-003E54?logo=devpost)](https://devpost.com/software/medlit)
 
-**Developed for:** [Google Chrome Built-in AI Challenge 2025](https://googlechromeai2025.devpost.com/) | [MedLit on Devpost](https://devpost.com/software/medlit)
+</div>
 
 ---
 
-## Problem Solved
+MedLit is a Chrome extension that turns the browser into a privacy-preserving research assistant for medical literature. It extracts structured study summaries, scores methodology quality, simplifies clinical jargon, translates abstracts, and answers questions about papers in a chat interface - all processed locally with Gemini Nano. No data ever leaves the browser.
 
-Medical professionals, trainees and researchers spend hours manually extracting study design elements from research papers and assessing study quality. Existing AI solutions require online navigation to chatbot interfaces and the upload of potentially sensitive medical documents to cloud services. MedLit addresses this through a browser-native, framework-aware, privacy-preserving on-device assistant using Chrome's built-in AI for analysis of medical literature, enabling rapid, structured literature review directly within the browser with offline capabilities.
+Built for the [Google Chrome Built-in AI Challenge 2025](https://googlechromeai2025.devpost.com/) ([Devpost submission](https://devpost.com/software/medlit)).
 
-## How It Works
+<div align="center">
+<img src="captures/structured-summary.png" alt="MedLit generating a framework-aligned structured summary of a Nature Medicine paper" width="850" />
+<p><em>Framework-aligned structured summary: study classification with confidence and reasoning, design, population, and intervention details extracted on-device.</em></p>
+</div>
 
-MedLit combines three Chrome Built-in AI APIs:
+## Why
 
-1. **Prompt API** - Structured extraction with framework-specific prompts (CONSORT, PRISMA, STROBE, STARD, CARE, COREQ)
-2. **Rewriter API** - Technical language simplification with medical domain-specific context
-3. **Translator API** - Multilingual abstract translation with fallback to Prompt API
+Clinicians, trainees, and researchers spend hours manually extracting study design elements from papers and judging their quality. Cloud-based AI tools require pasting potentially sensitive documents into external services. MedLit solves both problems with a browser-native, reporting-framework-aware assistant that works offline and keeps every token on-device.
 
-The extension automatically detects study types (RCT, Cohort, Systematic Review, etc.) and applies appropriate reporting framework templates to ensure element extraction accuracy.
+## Features
 
-## Core Features
+- **Structured summary extraction** - Classifies papers into 12 study types (RCT, Cohort, Systematic Review, Diagnostic Accuracy, ...) and applies the matching reporting framework (CONSORT, PRISMA, STROBE, STARD, CARE, COREQ) to extract PICO elements, demographics, outcomes, and effect sizes.
+- **Methodology quality assessment** - Scores methods sections against the Cochrane Risk of Bias dimensions (1-5 scale across 5 domains) with a confidence-weighted overall score (0-100). Content is pre-validated before scoring to avoid garbage-in-garbage-out.
+- **Jargon simplification** - Rewrites technical passages with the Rewriter API using medical domain context, with adjustable tone and length and key-term definitions.
+- **Translation** - Translates abstracts via the Translator API, falling back to the Prompt API for unsupported language pairs.
+- **Contextual chat** - Ask follow-up questions about the generated summary or any selected text, with markdown-rendered answers and token-limit warnings.
+- **Export** - Save summaries, assessments, simplified text, translations, and chat logs as Markdown or JSON.
+- **Accessibility** - Light/dark/high-contrast themes, dyslexia-friendly font option, and adjustable character size and spacing.
 
-### 1. Structured Summary Extraction
-- Automatic study type classification (12 types supported)
-- Framework-aligned extraction (CONSORT for RCTs, PRISMA for reviews etc.)
-- PICO element extraction with demographics, interventions, outcomes
-- Available through a side panel button or through a right-click context menu: "MedLit" --> "Summarize from selection"
+Every feature is reachable from the side panel or a right-click context menu ("MedLit" > "Summarize from selection", "Assess methodology from selection", etc.).
 
-### 2. Methodology Quality Assessment
-- Pre-validation of methodology content (confidence threshold: 60%)
-- Cochrane Risk of Bias framework scoring (1-5 scale across 5 dimensions)
-- Overall quality score (0-100) with confidence-based adjustment
-- Anti-pattern detection to prevent garbage-in-garbage-out
-- Available through a right-click context menu: "MedLit" --> "Assess methodology from selection"
+## Screenshots
 
-### 3. Technical Language Simplification
-- Rewriter API with medical domain context
-- Fallback to Prompt API with structured JSON output
-- Key term extraction with definitions
-- Three levels for tone and length rewriting.
-  - Tone: More Casual / Neutral / More Formal
-  - Length: More Concise / As-Is / More Detailed 
-- Available through a right-click context menu: "MedLit" --> "Simplify language from selection"
+<table>
+  <tr>
+    <td align="center">
+      <img src="captures/sidepanel-overview.png" alt="MedLit side panel alongside a research paper" />
+      <em>Side panel with summary, chat, methodology, and simplifier tools</em>
+    </td>
+    <td align="center">
+      <img src="captures/chat-strobe-details.png" alt="STROBE framework details and contextual chat answering questions about the study" />
+      <em>STROBE-specific extraction and contextual chat about the paper</em>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="captures/settings-accessibility.png" alt="Settings panel with theme and accessibility font options" width="75%" />
+      <em>Theme and accessibility settings: light/dark/high contrast, dyslexia-friendly fonts</em>
+    </td>
+  </tr>
+</table>
 
-### 4. Multilingual Translation
-- Translator API for supported language pairs
-- Automatic fallback to Prompt API
-- Preserves medical terminology accuracy
-- Available through a right-click context menu: "MedLit" --> "Translate selection to English"
+## How it works
 
-### 5. Conversational Chat
-- Context-aware Q&A based on side panel automatic summary or selected text ("MedLit" --> "Chat with selection")
-- Token limit management with user warnings
-- Markdown-rendered responses
-- Chat history (last 3 Q&A pairs)
-  
-### 6. On-Device Privacy & Offline Support
-- All processing done locally using Gemini Nano
-- No data leaves the browser
-- Initial model download with progress monitoring
-
-### 7. User Experience Enhancements
-- Context menu integration for easy access and text selection flexibility
-- Progress indicators during AI processing
-- Smart field filtering to reduce irrelevant content
-- Graceful error handling with fallbacks
-- Clean, intuitive side panel UI
-
-### 8. User Customization and Accessibility
-- Side panel settings for interface theme (light/dark/high contrast)
-- Adjustable font settings: Sans Serif, Serif, Dyslexic-friendly
-- Character size and distance sliders for dyslexia support
-  
-### 9. Export Functionality
-- Able to export summaries, assessments, simplified text, translations, and chat logs as Markdown or json files
-- Future support planned for PDF and CSV exports
-
-## Technical Implementation
-
-### Chrome AI API Compliance
-
-**Prompt API** (LanguageModel):
-```javascript
-const session = await LanguageModel.create({
-  initialPrompts: [
-    { role: "system", content: "You are a medical research analyst..." }
-  ],
-  temperature: 0.3,
-  topK: 10,
-  expectedInputs: [{ type: "text", languages: ["en"] }],
-  expectedOutputs: [{ type: "text", languages: ["en"] }],
-  monitor(m) {
-    m.addEventListener('downloadprogress', (e) => {
-      console.log(`Downloaded ${e.loaded * 100}%`);
-    });
-  }
-});
+```mermaid
+flowchart LR
+  CS["Content script<br/>page text extraction"] --> SW["Service worker<br/>context menus & messaging"]
+  SW --> SP["Side panel UI<br/>render & export"]
+  SP --> AI["aiClient.js"]
+  AI --> P["Prompt API<br/>classification, extraction, chat"]
+  AI --> R["Rewriter API<br/>simplification"]
+  AI --> T["Translator API<br/>translation"]
+  P & R & T --> GN(["Gemini Nano<br/>on-device"])
 ```
 
-**Rewriter API**:
-```javascript
-const rewriter = await Rewriter.create({
-  tone: "more-casual",
-  format: "plain-text",
-  length: "as-is",
-  sharedContext: "Simplify medical terminology..."
-});
-```
+1. A **decision-tree classifier prompt** with explicit anti-hallucination rules identifies the study type first (e.g. preventing RCTs from being misclassified as systematic reviews just because the introduction cites one).
+2. The detected type selects a **framework-specific extraction template**, so an RCT is summarized against CONSORT while a meta-analysis is summarized against PRISMA.
+3. Model output is **normalized and validated** before rendering - enum coercion, confidence thresholds, and keyword-based inference recover usable results from ambiguous responses.
+4. The Rewriter and Translator APIs are primary for their tasks, with **structured Prompt API fallbacks** so features degrade gracefully instead of failing.
 
-**Translator API**:
-```javascript
-const translator = await Translator.create({
-  sourceLanguage: 'es',
-  targetLanguage: 'en'
-});
-```
+## Tech stack
 
-### Architecture
+- **Chrome Built-in AI APIs only** - Prompt API (`LanguageModel`), Rewriter API, Translator API. No external services, no API keys.
+- **Vanilla JavaScript (ES6 modules)** - roughly 4,000 lines, zero framework, zero build step. Load unpacked and it runs.
+- **Manifest V3** - service worker background, side panel, content script.
+- **marked.js** (bundled, MIT) for markdown rendering in chat.
 
 ```
-medlit/
-├── manifest.json                 # Manifest V3
-├── src/
-│   ├── ai/
-│   │   ├── aiClient.js          # API integration (720 lines)
-│   │   ├── promptTemplates.js   # Framework-specific prompts (665 lines)
-│   │   ├── validators.js        # Content validation (164 lines)
-│   │   └── fallbacks.js         # Error handling (91 lines)
-│   ├── background/
-│   │   └── serviceWorker.js     # Context menus & messaging
-│   ├── content/
-│   │   └── contentScript.js     # Content extraction
-│   ├── sidepanel/
-│   │   ├── index.html           # UI
-│   │   ├── main.js              # App logic (1050 lines)
-│   │   ├── render.js            # UI rendering
-│   │   ├── styles.css           # Styling (834 lines)
-│   │   └── lib/
-│   │       └── marked.min.js    # Markdown rendering (v15.0.12, MIT)
-│   └── shared/
-│       ├── constants.js         # Shared constants
-│       └── messaging.js         # Chrome messaging utilities
+src/
+├── ai/
+│   ├── aiClient.js          # API sessions, classification, normalization
+│   ├── promptTemplates.js   # Framework-specific extraction prompts
+│   ├── validators.js        # Content pre-validation
+│   └── fallbacks.js         # Graceful degradation strategies
+├── background/
+│   └── serviceWorker.js     # Context menus & message routing
+├── content/
+│   └── contentScript.js     # Page text extraction
+├── sidepanel/
+│   ├── index.html / main.js / render.js / styles.css
+│   └── lib/marked.min.js
+└── shared/
+    ├── constants.js
+    └── messaging.js
 ```
 
-**Total codebase:** ~3,200 lines of JavaScript (excluding marked.js)
-
-### Key Design Decisions
-
-1. **Framework-Aware Classification**: Study type detection uses a decision tree with anti-hallucination rules to prevent misclassification (e.g., RCT vs Systematic Review)
-
-2. **Confidence-Based Validation**: Methodology assessment validates content before scoring, adjusting scores based on confidence levels to prevent inflated ratings
-
-3. **Multi-API Strategy**: Rewriter and Translator APIs are primary, with Prompt API fallbacks for broader compatibility
-
-4. **On-Device Privacy**: All processing happens locally using Gemini Nano—no data leaves the browser
-
-5. **Error Resilience**: Comprehensive fallback strategies ensure graceful degradation when AI is unavailable
-
-## Installation
+## Getting started
 
 ### Prerequisites
-- **Chrome 138+** (Stable/Dev/Canary) — Required for Prompt API in Extensions
-- **Operating system:** Windows 10/11, macOS 13+ (Ventura+), Linux, or ChromeOS on Chromebook Plus
-- **Storage:** At least **22 GB** of free space on the volume containing your Chrome profile  
-  *(Note: Actual Gemini Nano model is smaller; check `chrome://on-device-internals` for exact size. If free space falls below 10 GB after download, the model is automatically removed.)*
-- **Hardware** (one of the following):
-  - **GPU:** Strictly more than 4 GB VRAM, *OR*
-  - **CPU:** 16 GB RAM or more + 4 CPU cores or more
-- **Network:** Unmetered connection (Wi-Fi/ethernet recommended) for initial model download
-- **Chrome flags enabled:**
-  - `chrome://flags/#optimization-guide-on-device-model` → **Enabled**
-  - `chrome://flags/#prompt-api-for-gemini-nano` → **Enabled**
-  - `chrome://flags/#rewriter-api` → **Enabled** (Origin trial)
-  - `chrome://flags/#translation-api` → **Enabled**
 
-### Steps
-1. Download/clone the repository
-2. Open `chrome://extensions`
-3. Enable "Developer mode"
-4. Click "Load unpacked"
-5. Select the `medlit` folder
-6. Click the MedLit icon on any medical research paper
+- **Chrome 138+** (Stable, Dev, or Canary)
+- **OS**: Windows 10/11, macOS 13+, Linux, or ChromeOS (Chromebook Plus)
+- **Storage**: at least 22 GB free on the Chrome profile volume (the Gemini Nano model itself is smaller; Chrome removes it if free space drops below 10 GB)
+- **Hardware**: GPU with more than 4 GB VRAM, or 16 GB+ RAM with 4+ CPU cores
+- **Chrome flags** enabled:
+  - `chrome://flags/#optimization-guide-on-device-model`
+  - `chrome://flags/#prompt-api-for-gemini-nano`
+  - `chrome://flags/#rewriter-api`
+  - `chrome://flags/#translation-api`
+
+### Install
+
+1. Clone this repository
+2. Open `chrome://extensions` and enable **Developer mode**
+3. Click **Load unpacked** and select the `medlit` folder
+4. Open any medical paper (PubMed, PMC, journal site) and click the MedLit icon
+
+First use triggers the Gemini Nano model download; MedLit shows download progress in the side panel.
 
 ## Usage
 
-1. Navigate to a medical research paper (PubMed, PMC, journal website)
-2. Click the MedLit icon or use context menu options
-3. **For full-page summary:** Click "Generate Study Summary"
-4. **For methodology assessment:** Highlight Methods section → Right-click → "Assess methodology from selection"
-5. **For jargon simplification:** Highlight text → Right-click → "Simplify language from selection"
-6. **For translation:** Highlight non-English text → Right-click → "Translate selection to English"
-7. **For chat:** After generating a summary, ask questions in the Chat tab
+1. Navigate to a research paper and open the side panel
+2. **Full summary**: click "Generate Study Summary"
+3. **Methodology check**: highlight the Methods section, right-click > "Assess methodology from selection"
+4. **Simplify / translate**: highlight any passage, right-click > "Simplify language" or "Translate selection to English"
+5. **Chat**: after generating a summary, ask questions in the Chat tab
+6. **Export**: download any result as Markdown or JSON
 
-## Limitations & Considerations
+## Limitations
 
-- **PDF Extraction**: Chrome's PDF viewer has limited text extraction. For best results on PDFs, use context menu on selected text rather than full-page mode.
-- **Token Limits**: Chat contexts >4000 characters receive warnings; recommended limit is 2000 characters.
-- **Model Download**: First use requires downloading Gemini Nano (22 GB minimum free space needed; actual model size is smaller). Progress monitoring implemented. Chrome automatically removes the model if free space drops below 10 GB.
-- **Classification Accuracy**: Study type detection uses heuristics; anti-hallucination rules mitigate but don't eliminate errors.
-- **No External APIs**: Extension is intentionally built using only Chrome's built-in AI APIs—no external dependencies.
+- Chrome's PDF viewer limits full-page text extraction; selecting text and using the context menu works best on PDFs.
+- Chat contexts above ~4,000 characters trigger warnings; ~2,000 characters is the practical sweet spot for Gemini Nano.
+- Study type detection is heuristic-assisted; anti-hallucination rules reduce but do not eliminate misclassification.
 
-## License & Attribution
+## License
 
-**MedLit**: MIT License (see LICENSE file)
+[MIT](LICENSE)
 
-**Third-Party Libraries**:
-- **marked.js** v15.0.12 - MIT License - Markdown rendering in chat interface
-  - Repository: https://github.com/markedjs/marked
-  - Copyright (c) 2011-2025, Christopher Jeffrey
-  - Bundled locally for offline support and Chrome Web Store compliance
-
-## Development
-
-**Built with**:
-- ES6 Modules
-- Manifest V3
-- Chrome Built-in AI APIs exclusively
-- No build process required
+Bundles [marked.js](https://github.com/markedjs/marked) v15.0.12 (MIT, Copyright (c) 2011-2025 Christopher Jeffrey) locally for offline support.
 
 ## Acknowledgements
-- Chrome Built-in AI team for API access and support
-- Open-source community for inspiration and libraries
-- Medical professionals for feedback on usability and features
-- Devpost for hosting the Google Chrome Built-in AI Challenge 2025
+
+- The Chrome Built-in AI team for the APIs and documentation
+- Devpost and Google for hosting the Chrome Built-in AI Challenge 2025
+- Medical professionals who gave feedback on usability and features
